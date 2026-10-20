@@ -37,8 +37,12 @@ For each decision:
 ## 3. Preserve / Replace / Simplify
 Summarize what the team preserved from individual apps, what it replaced, and what it simplified.
 
+We kept the general ideas from everyone's individual apps. We used Taft's UI as the basis while adding features that we wanted from each of our apps. Additions included the login page, points, ai analyses, dependencies, and subtasks. We simplified the sprint creation/planning process. 
+
 ## 4. Validation and Risk Lessons
 Describe what the team learned about correctness, reliability, deployment, AI report behavior, integration, or other risks while comparing and combining the apps.
+
+We learned to spend more time answering questions and working on the spec before having any code actually written. We added layers to our github process to allow for a streamlined process of pushing changes to our main app.
 
 ## 5. Engineering Growth
 Explain how the team's engineering practice changed as you moved from individual development into team synthesis.
