@@ -5,9 +5,16 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Pick up APP_PORT etc. from .env, the same file docker compose reads.
+if [ -f .env ]; then
+    set -a
+    . ./.env
+    set +a
+fi
+
 if [ $# -eq 0 ]; then
     MODE=local
-    BASE_URL="http://localhost:8080"
+    BASE_URL="http://localhost:${APP_PORT:-8080}"
 else
     MODE=remote
     BASE_URL="${1%/}"
