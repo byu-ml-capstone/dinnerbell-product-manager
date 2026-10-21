@@ -6,3 +6,8 @@ services:
   backend:
     environment:
       - FRONTEND_ORIGIN=http://localhost:8080
+
+  db:
+    # Lets pytest and alembic on the host reach the local database (MIG-5).
+    ports:
+      - "5432:5432"

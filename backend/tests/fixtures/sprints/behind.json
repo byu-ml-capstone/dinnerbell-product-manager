@@ -1,0 +1,47 @@
+{
+  "sprint": {
+    "name": "Sprint 5",
+    "goal": "Sharing plans with family members.",
+    "status": "active",
+    "start_date": "2026-11-16",
+    "end_date": "2026-11-27",
+    "is_overdue": false,
+    "closing_notes": null,
+    "today": "2026-11-24"
+  },
+  "metrics": {
+    "committed_points": 21,
+    "completed_points": 5,
+    "remaining_points": 19,
+    "percent_complete": 20.8,
+    "scope_added_points": 3,
+    "scope_removed_points": 0,
+    "days_elapsed": 9,
+    "days_remaining": 3,
+    "unpointed_story_count": 1,
+    "points_per_day": 1.4,
+    "estimated_completion_date": "2026-12-08"
+  },
+  "velocity_history": [
+    {"sprint": "Sprint 3", "committed_points": 18, "completed_points": 18},
+    {"sprint": "Sprint 4", "committed_points": 18, "completed_points": 15}
+  ],
+  "stories": [
+    {"title": "Share plan with family", "parent_story": null, "status": "blocked", "priority": "high", "points": 8, "assignee": "Johnny", "description": "Send a read-only link to a plan.", "acceptance_criteria": "Link opens without login.\nLink can be revoked.", "blocked_by": ["Invite flow"], "days_since_update": 4, "stale": true, "latest_comment": {"author": "Johnny", "text": "Waiting on the invite flow."}},
+    {"title": "Invite flow", "parent_story": null, "status": "in_progress", "priority": "high", "points": 8, "assignee": "Eason", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 5, "stale": true, "latest_comment": null},
+    {"title": "Notification emails", "parent_story": null, "status": "done", "priority": "medium", "points": 5, "assignee": "Bella", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 2, "stale": false, "latest_comment": null},
+    {"title": "Print view", "parent_story": null, "status": "selected", "priority": "low", "points": 3, "assignee": "Taft", "description": "Added mid-sprint.", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 6, "stale": false, "latest_comment": null},
+    {"title": "Fix favicon", "parent_story": null, "status": "done", "priority": "low", "points": null, "assignee": "Taft", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 7, "stale": false, "latest_comment": null}
+  ],
+  "unfinished_stories_left_in_sprint": null,
+  "sprint_review": {
+    "run_at": "2026-11-23T18:00:00+00:00",
+    "verdicts": [
+      {"story": "Notification emails", "verdict": "partial", "summary": "Sends emails but no unsubscribe link."},
+      {"story": "Invite flow", "verdict": "no_link", "summary": "No branch is linked to this story or its parent story."}
+    ],
+    "unlinked_work_count": 1
+  },
+  "recent_discussion": [],
+  "additional_context": "Thanksgiving week: Taft is out Wednesday to Friday."
+}

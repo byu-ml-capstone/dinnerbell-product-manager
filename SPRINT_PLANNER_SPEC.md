@@ -50,15 +50,29 @@ Question format, before and after filling in:
   - Decision: **Needs team input:** <what's needed> (see §18)
 ```
 
-### Notes on this draft (Initial-App branch)
+### Notes on this version (Initial-App branch)
 
-- **Scope of this draft:** every section. D-3 says an AI builds everything first on one branch, and then the area owners split up to refine their parts. This branch (`Initial-App`) is that first build, so the whole spec is filled in and describes all of it.
+- **Scope:** every section. D-3 says an AI builds everything first on one branch, and then the area owners split up to refine their parts. This branch (`Initial-App`) is that first build, so the whole spec is filled in and describes all of it.
+- **Build status (2026-10-20):**
+  - Everything in §5–§13 is built on `Initial-App`, including the graph (§8), discussion (§13) and the AI sprint review (§10.2). Nothing on the D-1 cut list was cut.
+  - Every section's status is **In review**: it's built, and the team still needs to review the PR and the **Proposed** answers.
+  - Acceptance-criteria boxes stay unchecked until the team verifies them in that review.
+- **Where the build goes beyond this spec:** three small additions, each logged in §17.1 as made by the AI during the build and waiting for team review. The affected sections are updated to match:
+  1. A `usage` column on `sprint_analyses` to record token use (NFR-4, §10.3).
+  2. A closed sprint's metrics and burndown show the moment it closed (VEL-12, §12).
+  3. A `capacity_warning` on every sprint, so the sprint header can show it (MOVE-9, §6).
+- **What has been verified:**
+  - 118 backend tests pass against Postgres, and `alembic check` reports no drift between the models and the migration.
+  - `./smoke-test.sh` passes on the Docker stack.
+  - Two scripted walkthroughs of the UI pass in headless Chrome.
+  - **Not yet verified:** the AI and GitHub features against the real LiteLLM proxy, Codex model and GitHub API. The credentials aren't configured yet (see `OPEN_ITEMS.md`).
 - **Citations:**
   - `D-n` and `C-n` are answered items in `SPRINT_PLANNER_DECISIONS.md`.
-  - `A-n` are its "Already agreed" items. They are treated as decisions, but none of them is checked off in that file yet (see §18).
+  - `A-n` are its "Already agreed" items. They are treated as decisions, but none of them is checked off in that file yet (see `OPEN_ITEMS.md`).
   - `Q&A-n` are questions the AI asked Johnny while drafting on 2026-10-20. The full questions and answers are in §17.2. Boxes settled only by a Q&A answer are checked, but the team should confirm them during PR review.
-- **What's built where:** everything in this spec is built on `Initial-App` in the order in §16 (PLAN-1). If time runs out, cut in the D-1 order: graph (§8) and discussion (§13) first, then the AI sprint review (§10.2).
-- **Code paths:** paths like `backend/app/routers/stories.py` refer to the target file layout in PLAN-2. They don't exist yet.
+- **Code paths:** the files named in this spec exist. PLAN-2 (backend) and UI-10 (frontend) show the layout as built.
+- **"Starting point" notes:** these describe the base app at commit `fc1a359`, the state each feature started from, not the code on this branch.
+- **Open items:** `OPEN_ITEMS.md` lists everything still needed from the team. §18 points there.
 
 ---
 
@@ -71,7 +85,7 @@ Question format, before and after filling in:
 | Staging URL | http://dinnerbell-product-manager-staging.ml-capstone.cs.byu.edu (class naming convention from `README.md`; HTTP only, VPN required) |
 | Production URL | http://dinnerbell-product-manager.ml-capstone.cs.byu.edu (same convention) |
 | Base commit | `fc1a359` |
-| Last updated | 2026-10-20 (AI draft on branch `Initial-App`) |
+| Last updated | 2026-10-20 (built on branch `Initial-App`; in review) |
 
 | Team member | Role | Areas owned |
 |---|---|---|
@@ -190,7 +204,7 @@ Fill in the decision column for each part of the base app. This table also feeds
 | Frontend structure | `frontend/src/main.jsx` | One 675-line file, one page, no router | Change | Split into `App.jsx`, `api/`, `components/` and `features/<area>/` (D-3, UI-10). Keep plain JSX and no router; views are tabs (D-15, UI-2). |
 | API client | `frontend/src/api.js` | Small `fetch` wrapper; user ID kept in `localStorage` | Change | Same wrapper moved to `api/client.js`. Sends `credentials: "include"`, drops `X-User-Id` and `localStorage`, and sends the user to the login screen on a 401 (§5.2). |
 | Board drag and drop | `main.jsx` | `@dnd-kit/core` | Keep | Also used for the planning view (§11). Add `KeyboardSensor` (UI-8). |
-| Styling | `frontend/src/styles.css` | Hand-written CSS | Keep | No component library (D-15). New views add their own CSS sections. |
+| Styling | `frontend/src/styles.css` | Hand-written CSS | Keep | No component library (D-15). Split into `frontend/src/styles/*.css`, imported in order from `main.jsx`, so no file is over 400 lines (§5.4 acceptance criteria). |
 | Icons | `main.jsx` | `lucide-react` | Keep | The `GitPullRequest` icon becomes the branch/PR icon. The "blocked" badge gets its own icon (`Ban`). |
 | Frontend serving | `frontend/nginx.conf` | nginx serves the build and proxies `/api` and `/health` to the backend | Keep | Cookies work because the frontend and API share an origin. Raise `proxy_read_timeout` to 120s just in case, even though AI jobs run in the background. |
 | CI | `.github/workflows/ci.yml` | Runs `backend/ci_check.py` and `npm run build` | Change | Run Alembic and pytest against a Postgres service container, then `npm run build` (D-4, TEST-1). `ci_check.py` is removed. |
@@ -205,7 +219,7 @@ Fill in the decision column for each part of the base app. This table also feeds
 
 Cross-cutting work that most features depend on.
 
-**Status:** AI draft · **Owner:** Johnny
+**Status:** In review (built on `Initial-App`) · **Owner:** Johnny
 
 ### 5.1 Database migrations
 
@@ -428,25 +442,33 @@ Cross-cutting work that most features depend on.
 - [ ] **UI-10** What folder structure and naming conventions do we use for the frontend?
   - Decision: **Proposed:** Component files use `PascalCase.jsx`, and other modules use `camelCase.js`. Each area owner works mostly inside their own `features/` folders (PLAN-2). Reason: splitting by feature lets four people work without editing the same file.
 
+    As built on `Initial-App`:
+
     ```
     frontend/src/
-      main.jsx                  # only createRoot(<App />)
+      main.jsx                  # createRoot(<App />) and the stylesheet imports
       App.jsx                   # auth gate, project list, tab bar, selected project/sprint state
-      styles.css
+      workspace.js              # WorkspaceContext shared by every view, localStorage helpers, default sprint
+      constants.js  format.js   # statuses, priorities, Fibonacci points; date and count formatting
+      styles/                   # base, board, components, panels, ai, views (.css), imported in that order
       api/client.js             # request(): credentials "include", JSON, 401 -> onUnauthorized
+      api/useAsync.js           # small data-loading hook (UI-3)
       api/{auth,projects,stories,sprints,dependencies,trash,metrics,analyses,reviews,messages}.js
-      components/               # PanelTitle, EmptyState, ErrorBanner, Spinner, Toast, ConfirmDialog, Modal
-      features/auth/            # LoginPage.jsx, RegisterPage.jsx
+      components/               # PanelTitle, EmptyState, ErrorBanner, Spinner, Toast, ConfirmDialog, Modal,
+                                # MarkdownText, useUndoDelete
+      features/auth/            # LoginPage.jsx, RegisterPage.jsx, AuthLayout.jsx
       features/board/           # BoardView.jsx, Dashboard.jsx, BoardColumn.jsx, StoryCard.jsx
-      features/stories/         # StoryDrawer.jsx, StoryForm.jsx, StoryEditForm.jsx
-      features/sprints/         # SprintForm.jsx, SprintPicker.jsx, CloseSprintDialog.jsx
+      features/stories/         # StoryDrawer.jsx, StoryForm.jsx, StoryEditForm.jsx, StoryFields.jsx,
+                                # BranchSection.jsx, BlockersSection.jsx
+      features/sprints/         # SprintPanel.jsx, SprintForm.jsx, SprintPicker.jsx, CloseSprintDialog.jsx,
+                                # MoveUnfinishedDialog.jsx
       features/planning/        # PlanningView.jsx
       features/metrics/         # VelocityChart.jsx, BurndownChart.jsx
-      features/ai/              # AnalysisPanel.jsx, SprintReviewPanel.jsx
-      features/graph/           # GraphView.jsx
+      features/ai/              # AiPanel.jsx, AnalysisPanel.jsx, SprintReviewPanel.jsx, usePolling.js
+      features/graph/           # GraphView.jsx (lazy-loaded, since React Flow is large)
       features/discussion/      # DiscussionView.jsx
-      features/trash/           # TrashView.jsx
-      features/settings/        # SettingsView.jsx
+      features/trash/           # TrashView.jsx, TrashRow.jsx, DeletedProjects.jsx
+      features/settings/        # SettingsView.jsx, ProjectForm.jsx
     ```
 
     Add `frontend/vite.config.js` with `@vitejs/plugin-react` and a dev proxy from `/api` and `/health` to `http://localhost:8000`, so local development is same-origin like production. `.env.example` then no longer needs `VITE_API_BASE`.
@@ -632,7 +654,7 @@ For each issue, decide whether to fix it now, fix it as part of a feature, or ac
 
 The basic rules every other feature builds on.
 
-**Status:** AI draft · **Owner:** Bella
+**Status:** In review (built on `Initial-App`) · **Owner:** Bella
 
 **Starting point**
 
@@ -719,7 +741,7 @@ The basic rules every other feature builds on.
 | GET | `/api/stories/{story_id}` | Changed | Adds `github_branch`, `branch_url`, `suggested_branch` (§9), `sprint_history` and `carryover_count` (MOVE-8). |
 | POST | `/api/projects/{project_id}/sprints` | Changed | Body `{name?, goal, start_date, end_date}`, with both dates required. `status` is removed from the request. Any number of sprints can be active (CORE-8). The default name is "Sprint N", where N counts every sprint in the project including deleted ones. |
 | PUT | `/api/sprints/{sprint_id}` | Changed | Edits `name`, `goal`, `start_date` and `end_date`. `status` is removed. Returns 400 for a closed sprint. |
-| GET | `/api/projects/{project_id}/sprints` | Changed | Each sprint adds the calculated `status` and `is_overdue`, plus `story_count`, `planned_points` (points of top-level stories), `completed_points` (live), `committed_points` and `closed_by_id`. Ordered by `start_date`, newest first. Deleted sprints are left out. |
+| GET | `/api/projects/{project_id}/sprints` | Changed | Each sprint adds the calculated `status` and `is_overdue`, plus `story_count`, `planned_points` (points of top-level stories), `completed_points` (live), `committed_points`, `closed_by_id`, and `capacity_warning` for sprints that aren't closed (MOVE-9). Ordered by `start_date`, newest first. Deleted sprints are left out. |
 | GET | `/api/sprints/{sprint_id}` | Changed | Same fields as the list. |
 | GET | `/api/projects/{project_id}/summary` | Changed | `active_sprint` is replaced by `active_sprints` (a list). Counts leave out deleted stories. |
 | GET | `/api/sprints/{sprint_id}/board` | Changed | Returns stories with `sprint_id = this sprint` plus stories in *this project* with `sprint_id IS NULL` (BUG-1). Adds `read_only: true` when the sprint is closed. |
@@ -764,7 +786,7 @@ The basic rules every other feature builds on.
 
 **Goal** (`ARCH_SYNTH.md` decision 1): projects, sprints and stories can be deleted without losing them for good.
 
-**Status:** AI draft · **Owner:** Johnny
+**Status:** In review (built on `Initial-App`) · **Owner:** Johnny
 
 **Starting point**
 
@@ -889,7 +911,7 @@ The basic rules every other feature builds on.
 
 **Goal** (`ARCH_SYNTH.md` decision 2): see which stories have to be done before others, as a graph, so we don't get stuck.
 
-**Status:** AI draft · **Owner:** Taft · **Priority:** Could (first to cut, D-1). BUG-3 to BUG-6 are fixed regardless.
+**Status:** In review (built on `Initial-App`) · **Owner:** Taft · **Priority:** Could (first to cut, D-1). BUG-3 to BUG-6 are fixed regardless.
 
 **Starting point**
 
@@ -1003,7 +1025,7 @@ The basic rules every other feature builds on.
 
 **Goal** (`ARCH_SYNTH.md` decision 3): every sprint and story can point to the GitHub branch, pull request or issue it belongs to, so we always know what each branch is for. The links are also how the AI code review (§10.2) finds the code.
 
-**Status:** AI draft · **Owner:** Eason
+**Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
 **Starting point**
 
@@ -1107,7 +1129,7 @@ The basic rules every other feature builds on.
 
 **Goal** (`ARCH_SYNTH.md` decision 4): more than a completion percentage. Guidance during a sprint on what's needed next, and a check of what's actually in the code against what the sprint says has been done.
 
-**Status:** AI draft · **Owner:** Eason
+**Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
 **Naming used in this section:** **Sprint analysis** (§10.1) is the progress report. **Sprint review** (§10.2) is the AI check of linked code against what the sprint claims. The template calls it "code review". Johnny called it "sprint review" in Q&A-7 because it runs per sprint (D-39), so the API, tables and UI use that name.
 
@@ -1352,7 +1374,7 @@ The basic rules every other feature builds on.
 | Table | Change | Migration / backfill notes |
 |---|---|---|
 | `sprint_reports` | Removed. Replaced by `sprint_analyses`. | Not created in `0001_initial` (MIG-3 wipe, so nothing to move). |
-| `sprint_analyses` | New table: `id` (PK, `new_id("analysis")`), `sprint_id` (FK, **not** unique, indexed), `trigger` (`manual` or `sprint_closed`), `status` (`pending`, `running`, `complete` or `failed`), `error` (Text, null), `model` (String), `additional_context` (Text), `input_snapshot` (JSON), `metrics` (JSON, a copy of the VEL-5 numbers used), `ai_content` (Text, null), `final_content` (Text, null), `created_by_id` (FK, null for automatic runs), `created_at`, `started_at`, `completed_at`, `finalized_at`, `finalized_by_id`. | Created fresh. |
+| `sprint_analyses` | New table: `id` (PK, `new_id("analysis")`), `sprint_id` (FK, **not** unique, indexed), `trigger` (`manual` or `sprint_closed`), `status` (`pending`, `running`, `complete` or `failed`), `error` (Text, null), `model` (String), `additional_context` (Text), `input_snapshot` (JSON), `metrics` (JSON, a copy of the VEL-5 numbers used), `usage` (JSON, null; token use reported by the provider, NFR-4), `ai_content` (Text, null), `final_content` (Text, null), `created_by_id` (FK, null for automatic runs), `created_at`, `started_at`, `completed_at`, `finalized_at`, `finalized_by_id`. | Created fresh. |
 | `sprint_reviews` | New table: `id` (PK, `new_id("review")`), `sprint_id` (FK, indexed), `status` (same values as above), `error`, `model`, `repo_url` (copied at start), `items_total`, `items_done`, `summary_markdown` (Text, null), `unlinked_work` (JSON list of `{pr_number, title, author, merged_at, url}`), `usage` (JSON: tokens and tool calls), `created_by_id`, `created_at`, `started_at`, `completed_at`. | Created fresh. |
 | `sprint_review_items` | New table: `id` (PK), `review_id` (FK, indexed), `story_id` (FK), `story_title` (copied at review time), `claimed_status` (copied), `verdict` (`matches`, `partial`, `no_evidence`, `no_link` or `cant_tell`), `summary` (Text), `criteria` (JSON), `evidence` (JSON), `has_tests` (Boolean, null), `branch` (String, null), `pr_number` (Integer, null), `head_sha` (String 40, null), `input_hash` (String 64), `reused_from_item_id` (FK self, null), `created_at`. | Created fresh. |
 
@@ -1438,7 +1460,7 @@ Code layout:
 
 **Goal** (`ARCH_SYNTH.md` decision 5): stories can move to later or earlier sprints as plans change.
 
-**Status:** AI draft · **Owner:** Bella
+**Status:** In review (built on `Initial-App`) · **Owner:** Bella
 
 **Starting point**
 
@@ -1477,7 +1499,7 @@ Code layout:
 - [ ] **MOVE-8** Do we keep each story's sprint history (e.g. "carried over twice")? Where is it shown?
   - Decision: **Proposed:** Yes, using the `sprint_changed` events in `story_events` (VEL-6). The story drawer shows a "Sprint history" line, for example "Backlog → Sprint 2 → Sprint 3 (carried over 1×)". Cards and planning cards show a small "↻1" badge when `carryover_count ≥ 1`. A carry-over is a move out of a sprint after that sprint's start date while the story wasn't done. Reason: repeated carry-overs show that a story needs splitting, and the event log already has the data.
 - [ ] **MOVE-9** Do we warn when a sprint's planned points are higher than our recent velocity?
-  - Decision: **Proposed:** Yes, as a warning only. If the planned points of a planned or active sprint (its top-level stories) are more than the average velocity of the last 3 closed sprints (VEL-8), the sprint header and planning column show "⚠ 34 pts planned vs 21 avg velocity". There's no warning until at least one sprint has been closed. Reason: it's a cheap check against overloading a sprint.
+  - Decision: **Proposed:** Yes, as a warning only. If the planned points of a planned or active sprint (its top-level stories) are more than the average velocity of the last 3 closed sprints (VEL-8), the sprint header and planning column show "⚠ 34 pts planned vs 21 avg velocity". The API returns it as `capacity_warning` on every sprint, so both places use the same rule. There's no warning until at least one sprint has been closed. Reason: it's a cheap check against overloading a sprint.
 - [ ] **MOVE-10** When a partly finished story moves to another sprint, does it keep its status or reset?
   - Decision: **Proposed:** It keeps its status. There are two exceptions:
     - Moving to the backlog (`sprint_id = null`) sets the status to `backlog`.
@@ -1560,7 +1582,7 @@ Code layout:
 
 **Goal** (`ARCH_SYNTH.md` §1): track velocity across sprints.
 
-**Status:** AI draft · **Owner:** Bella
+**Status:** In review (built on `Initial-App`) · **Owner:** Bella
 
 **Starting point**
 
@@ -1620,6 +1642,13 @@ Code layout:
 - [ ] **VEL-11** Which chart library do we use?
   - Options: Recharts · Chart.js · Nivo · hand-built SVG
   - Decision: **Proposed:** Recharts. Reason: it's React-native, and bar, line and reference-line charts take a few lines each, which replaces the overflowing hand-made bars (BUG-11).
+- [ ] **VEL-12** What do a closed sprint's metrics show once its unfinished stories have been moved out? (new, added during the build)
+  - Decision: **Proposed:** How things stood at the moment it closed. Once a sprint is closed:
+    - its burndown and its completed, remaining and scope numbers are replayed only up to `closed_at`;
+    - stories carried out afterwards don't count as removed scope;
+    - `estimated_completion_date` is null.
+
+    Reason: without this, carrying unfinished work out of a closed sprint (D-28) made it look 100% complete, with all of that work shown as removed scope.
 
 **Requirements**
 
@@ -1644,7 +1673,7 @@ Code layout:
 |---|---|---|---|
 | POST | `/api/sprints/{sprint_id}/close` | Changed | Sets `velocity` to completed points (VEL-1; no fallback to a story count, BUG-10), `committed_points` (VEL-4), `closed_at` and `closed_by_id`, and saves `notes`. Returns `{id, status, closed_at, velocity, committed_points, completed_stories, incomplete_stories, unpointed_done_stories, analysis_id}`. |
 | GET | `/api/projects/{project_id}/velocity` | Changed | `{sprints: [{id, name, start_date, end_date, committed_points, velocity, closed_at}] (last 6 closed, non-deleted, oldest first), average_velocity_3: number \| null}`. |
-| GET | `/api/sprints/{sprint_id}/metrics` | New | `{committed_points, completed_points, remaining_points, percent_complete, scope_added_points, scope_removed_points, days_elapsed, days_remaining, unpointed_story_count, points_per_day, estimated_completion_date, burndown: [{date, remaining_points, ideal_points, scope_change_points}]}`. Calculated by `services/metrics.py` from the event log, and also used by the AI analysis (AI-4). |
+| GET | `/api/sprints/{sprint_id}/metrics` | New | `{committed_points, completed_points, remaining_points, percent_complete, scope_added_points, scope_removed_points, days_elapsed, days_remaining, unpointed_story_count, points_per_day, estimated_completion_date, burndown: [{date, remaining_points, ideal_points, scope_change_points}]}`. Calculated by `services/metrics.py` from the event log, and also used by the AI analysis (AI-4). For a closed sprint, the numbers and burndown reflect the moment it closed and `estimated_completion_date` is null (VEL-12). |
 
 **UI changes**
 
@@ -1667,6 +1696,7 @@ Code layout:
 - [ ] With no closed sprints and no completed points, `estimated_completion_date` is null.
 - [ ] The velocity chart renders 6 bars without overflowing its panel for velocities between 0 and 200 (BUG-11).
 - [ ] Every change to a story's status, sprint or points, made through any endpoint (update, bulk move, move-unfinished, delete or restore), creates exactly one matching `story_events` row.
+- [ ] After a closed sprint's unfinished stories are moved out, its metrics still show the completed and remaining points at close, the last burndown entry is unchanged, `scope_removed_points` doesn't include the moved stories, and `estimated_completion_date` is null (VEL-12).
 
 **Risks and open questions**
 
@@ -1679,7 +1709,7 @@ Code layout:
 
 **Goal** (`ARCH_SYNTH.md` §1): chat and discussion features.
 
-**Status:** AI draft · **Owner:** Taft · **Priority:** Could (first to cut, D-1)
+**Status:** In review (built on `Initial-App`) · **Owner:** Taft · **Priority:** Could (first to cut, D-1)
 
 **Starting point**
 
@@ -1856,12 +1886,14 @@ Questions that come up where two features meet.
     backend/app/
       main.py            # create app, lifespan, include routers (Johnny)
       config.py  database.py  deps.py  models.py   (Johnny; models.py is shared, see note below)
-      schemas/           # one module per area: auth.py, projects.py, stories.py, sprints.py, analyses.py, reviews.py, messages.py, trash.py
+      schemas/           # one module per area: auth.py, projects.py, stories.py, sprints.py, metrics.py, graph.py,
+                         # github.py, analyses.py, reviews.py, messages.py, trash.py
       routers/           # auth.py users.py projects.py trash.py (Johnny) · stories.py sprints.py planning.py metrics.py (Bella)
                          # github.py analyses.py reviews.py (Eason) · dependencies.py messages.py (Taft) · comments.py (shared)
-      services/          # auth.py soft_delete.py jobs.py (Johnny) · events.py moves.py metrics.py (Bella)
-                         # llm.py github_client.py analysis.py sprint_review.py (Eason) · graph.py (Taft)
+      services/          # auth.py soft_delete.py jobs.py clock.py (Johnny) · events.py moves.py metrics.py sprints.py stories.py (Bella)
+                         # llm.py github_client.py github_links.py analysis.py sprint_review.py (Eason) · graph.py (Taft)
       seed.py
+    backend/scripts/ai_eval.py  # manual prompt and sprint-review check against the real AI settings (AI-12, REPO-14)
     backend/alembic/versions/   (anyone; MIG-4 rules)
     backend/tests/              # test_<router>.py, owned with the router
     frontend/src/features/      # auth, trash, settings (Johnny) · board, stories, sprints, planning, metrics (Bella)
@@ -1916,6 +1948,11 @@ Record decisions that change direction, affect several features, or were hard to
 | 2026-10-20 | REPO-2, REPO-7, REPO-11 | The sprint review explores the repo with read-only tools, covers the whole sprint, and is advice only | Team (D-35, D-39, D-36) | The template's "code review" is called "sprint review" (Q&A-7) |
 | 2026-10-20 | CHAT-1 | Discussion board per sprint, and existing story comments are kept | Team (D-31); Johnny (Q&A-4) | |
 | 2026-10-20 | OPS-1 | App renamed to "DinnerBell Product Manager". The repo name and URLs don't change | Team (D-19); Johnny (Q&A-1) | |
+| 2026-10-20 | PLAN-1, SCOPE-1 | Everything in §5–§13 is built on `Initial-App`. Nothing on the D-1 cut list was cut | AI build (D-3) | Every section is In review until the PR and the **Proposed** answers are reviewed |
+| 2026-10-20 | NFR-4, §10.3 | `sprint_analyses` gets a `usage` JSON column for the provider's token counts | AI during the build; needs team review | NFR-4 asks for token use on every analysis, but the §10.3 table had no column for it |
+| 2026-10-20 | VEL-12 | A closed sprint's metrics and burndown are frozen at `closed_at`, with no completion estimate | AI during the build; needs team review | Found in UI testing: carrying stories out after close looked like removed scope and 100% complete |
+| 2026-10-20 | MOVE-9 | Every sprint in the API carries `capacity_warning`, so the sprint header and Planning share one rule | AI during the build; needs team review | MOVE-9 asked for the warning in the sprint header too |
+| 2026-10-20 | §18 | The open items list moves to `OPEN_ITEMS.md`, so there's one list to keep up to date | Johnny | |
 
 ### 17.2 Clarifying questions asked while drafting
 
@@ -1937,7 +1974,7 @@ Asked by the AI and answered by Johnny on 2026-10-20 while filling in this spec 
 2. The repo-reading feature in §10.2 is called **sprint review**, because it runs per sprint (D-39), and it uses a **Codex model**.
 3. "We have openai access tokens if needed" means the Codex model can be called directly at OpenAI if LiteLLM doesn't serve it. The backend therefore has separate settings: `ANALYSIS_LLM_*` and `REVIEW_LLM_*` (OPS-3).
 
-The proxy URL and model names are still open (§18).
+The proxy URL and model names are still open (see `OPEN_ITEMS.md`).
 
 **Answer to D-18's question** ("what are the current ci tests checking?"):
 
@@ -1950,23 +1987,14 @@ The proxy URL and model names are still open (§18).
 
 ## 18. Open items for the team
 
-Questions marked **Needs team input**, and new questions that don't belong to a section yet.
+Moved to [`OPEN_ITEMS.md`](OPEN_ITEMS.md) on 2026-10-20, so there's only one list to keep up to date. It has everything that was in this table, plus the items found while building:
+- the questions marked **Needs team input**;
+- the AI and GitHub settings;
+- the database wipes;
+- CODEOWNERS;
+- the decisions to confirm.
 
-| Question ID | What's needed | Who follows up |
-|---|---|---|
-| AI-7, OPS-3 | The LiteLLM proxy URL on Coolify (`ANALYSIS_LLM_BASE_URL`), its key, and the model name to use for analysis (`ANALYSIS_LLM_MODEL`) | Eason |
-| AI-7, OPS-3 | The exact Codex model name (`REVIEW_LLM_MODEL`). Whether it's served by the LiteLLM proxy (set `REVIEW_LLM_BASE_URL`) or called directly at OpenAI with our token (leave it empty). Check that it supports tool calls through the Responses API | Eason |
-| REPO-4, GH-8 | Create the fine-grained read-only GitHub token for the DinnerBell repo (Contents, Pull requests and Metadata: read). It may need org admin approval in `byu-ml-capstone`. Put it in Coolify as `GITHUB_TOKEN` for staging and prod | Eason |
-| GH-4 | The DinnerBell repo URL to enter in the project's Settings tab | Eason |
-| MIG-3 | Wipe the staging database before `Initial-App` first deploys to staging, and production before the first `staging` → `main` merge | Johnny |
-| A-1 to A-14 | None of the "Already agreed" items are checked off in `SPRINT_PLANNER_DECISIONS.md`. This draft treats them as decisions, so the team should confirm them | Whole team |
-| Q&A-1 to Q&A-7 | Johnny answered these while drafting (§17.2). The team should confirm them in PR review | Whole team |
-| TEST-8 (D-8) | D-8 is unanswered. Confirm the CODEOWNERS proposal, and supply each owner's GitHub username | Johnny |
-| CORE-6 | Confirm that unique titles also apply to subtasks. For example, two stories can't both have a subtask called "Write tests" | Bella |
-| DEL-2 | Confirm that deleting a sprint deletes its stories (D-26 as written). The alternative is moving them to the backlog | Johnny |
-| §16 | Confirm the Sprint 1 to 3 dates. A-2 says about 10 days, but no start date is recorded | Whole team |
-| NFR-5 | What happens to the app and its data after the two semesters, and whether the class Coolify keeps hosting it | Whole team |
-| D-9, TEST-10 | Agree on the "stable" checklist before the first `staging` → `main` merge | Whole team |
+Add new open items there.
 
 ---
 

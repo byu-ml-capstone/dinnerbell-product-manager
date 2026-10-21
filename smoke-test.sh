@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Local:  ./smoke-test.sh            builds and starts the stack, registers a throwaway user, creates a project.
+# Remote: ./smoke-test.sh <url>      read-only checks; set SMOKE_USERNAME and SMOKE_PASSWORD to also check login.
+#         It never creates data on a deployed instance (TEST-7).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -9,6 +12,9 @@ else
     MODE=remote
     BASE_URL="${1%/}"
 fi
+
+JAR="$(mktemp)"
+trap 'rm -f "$JAR"' EXIT
 
 if [ "$MODE" = "local" ]; then
     export SERVICE_FQDN_FRONTEND="$BASE_URL"
@@ -38,16 +44,39 @@ echo "=== GET /health ==="
 curl -fsS "$BASE_URL/health"
 echo
 
-PROJECT_NAME="smoke-test-project-$(date +%s)"
-echo "=== POST /api/projects (frontend -> backend -> db write) ==="
-curl -fsS -X POST "$BASE_URL/api/projects" \
-    -H 'Content-Type: application/json' \
-    -d "{\"name\":\"$PROJECT_NAME\",\"description\":\"Created by smoke-test.sh\",\"team_member_ids\":[]}" >/dev/null
-echo "created $PROJECT_NAME"
+echo "=== GET /api/projects without a session must be 401 ==="
+status=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/api/projects")
+[ "$status" = "401" ] || { echo "expected 401, got $status"; exit 1; }
+echo "login required ok"
 
-echo "=== GET /api/projects (db read-back) ==="
-curl -fsS "$BASE_URL/api/projects" | grep "$PROJECT_NAME" >/dev/null
-echo "read-back ok"
+if [ "$MODE" = "local" ]; then
+    USERNAME="smoke-$(date +%s)"
+    echo "=== POST /api/auth/register ($USERNAME) ==="
+    curl -fsS -c "$JAR" -X POST "$BASE_URL/api/auth/register" \
+        -H 'Content-Type: application/json' \
+        -d "{\"username\":\"$USERNAME\",\"name\":\"Smoke Test\",\"password\":\"smoke-test-password\"}" >/dev/null
+    echo "registered"
+
+    PROJECT_NAME="smoke-test-project-$(date +%s)"
+    echo "=== POST /api/projects (frontend -> backend -> db write) ==="
+    curl -fsS -b "$JAR" -X POST "$BASE_URL/api/projects" \
+        -H 'Content-Type: application/json' \
+        -d "{\"name\":\"$PROJECT_NAME\",\"description\":\"Created by smoke-test.sh\",\"team_member_ids\":[]}" >/dev/null
+    echo "created $PROJECT_NAME"
+
+    echo "=== GET /api/projects (db read-back) ==="
+    curl -fsS -b "$JAR" "$BASE_URL/api/projects" | grep "$PROJECT_NAME" >/dev/null
+    echo "read-back ok"
+elif [ -n "${SMOKE_USERNAME:-}" ] && [ -n "${SMOKE_PASSWORD:-}" ]; then
+    echo "=== POST /api/auth/login ($SMOKE_USERNAME) ==="
+    curl -fsS -c "$JAR" -X POST "$BASE_URL/api/auth/login" \
+        -H 'Content-Type: application/json' \
+        -d "{\"username\":\"$SMOKE_USERNAME\",\"password\":\"$SMOKE_PASSWORD\"}" >/dev/null
+    curl -fsS -b "$JAR" "$BASE_URL/api/projects" >/dev/null
+    echo "login and project list ok"
+else
+    echo "SMOKE_USERNAME / SMOKE_PASSWORD not set: skipping the login check"
+fi
 
 echo
 if [ "$MODE" = "local" ]; then

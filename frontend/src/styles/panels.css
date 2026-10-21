@@ -1,0 +1,361 @@
+/* Tables, settings, status colors, sprint panel and story drawer sections. */
+
+/* Tables */
+
+.data-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  width: 100%;
+}
+
+.data-table th {
+  border-bottom: 1px solid #dcdcdc;
+  color: #707070;
+  font-size: 12px;
+  padding: 8px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.data-table td {
+  border-bottom: 1px solid #eeeeee;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.actions-cell {
+  text-align: right;
+}
+
+.trash-type {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #fafafa;
+}
+
+/* Settings */
+
+.settings-grid {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.member-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.member-list li {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.danger-zone {
+  border-color: #f2c4c4;
+}
+
+.field span svg {
+  vertical-align: -1px;
+}
+
+/* Status colors (board, drawer, graph) */
+
+.story-card {
+  border-left: 4px solid var(--status-backlog);
+}
+
+.story-card.status-selected { border-left-color: var(--status-selected); }
+.story-card.status-in_progress { border-left-color: var(--status-in_progress); }
+.story-card.status-blocked { border-left-color: var(--status-blocked); }
+.story-card.status-done { border-left-color: var(--status-done); }
+
+.story-card.dragging {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  position: relative;
+  z-index: 5;
+}
+
+.status-tag {
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-tag.status-backlog { background: var(--status-backlog); }
+.status-tag.status-selected { background: var(--status-selected); }
+.status-tag.status-in_progress { background: var(--status-in_progress); }
+.status-tag.status-blocked { background: var(--status-blocked); }
+.status-tag.status-done { background: var(--status-done); }
+
+.card-top {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  background: #f4f4f4;
+  border: 1px solid #dddddd;
+  border-radius: 999px;
+  color: #505050;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+}
+
+.icon-tag {
+  align-items: center;
+  display: inline-flex;
+}
+
+.card-check {
+  min-height: 0;
+  width: auto;
+}
+
+.blocked-pill svg {
+  color: var(--status-blocked);
+}
+
+/* Sprint panel */
+
+.sprint-badge {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.sprint-badge.planned { background: #e0ecff; color: #1d4ed8; }
+.sprint-badge.active { background: #dcfce7; color: #15803d; }
+.sprint-badge.overdue { background: #fee2e2; color: #b91c1c; }
+.sprint-badge.closed { background: #0a0a0a; color: #ffffff; }
+
+.sprint-header {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sprint-header p {
+  margin: 0;
+}
+
+.sprint-header-line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.sprint-stats {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 14px;
+}
+
+.new-sprint {
+  margin-top: 12px;
+}
+
+.panel-note {
+  color: #707070;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.chart-box {
+  height: 190px;
+  width: 100%;
+}
+
+.stat-row {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 8px;
+}
+
+.stat {
+  background: #f6f6f6;
+  border-radius: 6px;
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.stat span {
+  color: #707070;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stat strong {
+  font-size: 14px;
+}
+
+.team-hint {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+  margin: 12px 0 0;
+}
+
+/* Story drawer and forms */
+
+.drawer-overlay {
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+  height: 100vh;
+  max-height: none;
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: min(420px, 100vw);
+  z-index: 40;
+}
+
+.drawer-close {
+  align-items: center;
+  display: inline-flex;
+}
+
+.drawer-tags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.drawer-tags .link-button {
+  font-size: 12px;
+}
+
+.drawer-actions {
+  margin: 4px 0 8px;
+}
+
+.description {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+
+.blocks-line {
+  margin: 4px 0 10px;
+}
+
+.dependency {
+  align-items: center;
+  grid-template-columns: 1fr auto;
+}
+
+.dependency .link-button {
+  justify-self: start;
+  text-align: left;
+}
+
+.dependency small,
+.dependency > button:last-child {
+  grid-column: 1 / -1;
+}
+
+.dependency > button:last-child {
+  justify-self: start;
+}
+
+button.subtask {
+  align-items: center;
+  background: #f4f4f4;
+  border: 1px solid #e1e1e1;
+  color: #0a0a0a;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.subtask-title {
+  flex: 1;
+}
+
+.points-select {
+  max-width: 80px;
+}
+
+.story-fields {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.span-2 {
+  grid-column: 1 / -1;
+}
+
+.edit-form {
+  border: 1px solid #e1e1e1;
+  border-radius: 8px;
+  margin: 10px 0;
+  padding: 12px;
+}
+
+.edit-form .story-fields {
+  grid-template-columns: 1fr;
+}
+
+.branch-box {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.branch-name,
+.pr-status {
+  align-items: center;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.suggested-branch {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 6px;
+}
+
+code {
+  background: #f1f1f1;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  padding: 2px 5px;
+}
