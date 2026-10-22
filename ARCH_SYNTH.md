@@ -2,8 +2,8 @@
 
 ## 1. What We Learned from Individual Apps
 Summarize the most important ideas, gaps, and lessons the team discovered by comparing individual apps.
-Resurrecting sprints/stories, having chat/discussion features, graphs showing dependencies, velocity tracking.
-Biggest gaps was in the UI. We were not prepared for good UI design.
+
+Our most important ideas include resurrecting sprints/stories, having chat/discussion features, graphs showing dependencies, and velocity tracking. Our biggest gaps in our individual apps were in the UI. We were not prepared to build a good UI design on our own. We discussed how we can use ai to help build better UI.
 
 ## 2. Engineering Decisions
 Identify the 3-5 most important decisions the team made while creating the unified app.
@@ -46,3 +46,5 @@ We learned to spend more time answering questions and working on the spec before
 
 ## 5. Engineering Growth
 Explain how the team's engineering practice changed as you moved from individual development into team synthesis.
+
+We are developing better practices of github usage. We are utilizing multiple branches and creating PRs for changes. We've also been learning a lot about databases and handling migrations properly. We've also improved on our prompt engineering.
