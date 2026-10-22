@@ -1,0 +1,41 @@
+{
+  "sprint": {
+    "name": "Sprint 4",
+    "goal": "Weekly meal plan and grocery list.",
+    "status": "active",
+    "start_date": "2026-11-02",
+    "end_date": "2026-11-13",
+    "is_overdue": false,
+    "closing_notes": null,
+    "today": "2026-11-07"
+  },
+  "metrics": {
+    "committed_points": 18,
+    "completed_points": 10,
+    "remaining_points": 8,
+    "percent_complete": 55.6,
+    "scope_added_points": 0,
+    "scope_removed_points": 0,
+    "days_elapsed": 6,
+    "days_remaining": 6,
+    "unpointed_story_count": 0,
+    "points_per_day": 1.6,
+    "estimated_completion_date": "2026-11-12"
+  },
+  "velocity_history": [
+    {"sprint": "Sprint 2", "committed_points": 16, "completed_points": 13},
+    {"sprint": "Sprint 3", "committed_points": 18, "completed_points": 18}
+  ],
+  "stories": [
+    {"title": "Weekly meal plan view", "parent_story": null, "status": "done", "priority": "urgent", "points": 8, "assignee": "Taft", "description": "A seven-day grid of planned meals.", "acceptance_criteria": "Shows seven days.\nMeals can be dragged between days.", "blocked_by": [], "days_since_update": 1, "stale": false, "latest_comment": null},
+    {"title": "Grocery list from plan", "parent_story": null, "status": "in_progress", "priority": "high", "points": 5, "assignee": "Eason", "description": "", "acceptance_criteria": "Combines ingredients from every planned meal.", "blocked_by": [], "days_since_update": 0, "stale": false, "latest_comment": {"author": "Eason", "text": "Aisle grouping left."}},
+    {"title": "Family login", "parent_story": null, "status": "done", "priority": "medium", "points": 2, "assignee": "Johnny", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 3, "stale": false, "latest_comment": null},
+    {"title": "Pantry tracking", "parent_story": null, "status": "selected", "priority": "low", "points": 3, "assignee": "Bella", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 5, "stale": false, "latest_comment": null}
+  ],
+  "unfinished_stories_left_in_sprint": null,
+  "sprint_review": null,
+  "recent_discussion": [
+    {"author": "Bella", "text": "Pantry tracking can start Monday.", "posted_at": "2026-11-06T17:00:00+00:00"}
+  ],
+  "additional_context": null
+}

@@ -1,0 +1,255 @@
+/* Planning, graph and discussion views, plus late layout fixes. */
+
+/* Planning */
+
+.planning-view {
+  display: grid;
+  gap: 12px;
+}
+
+.planning-columns {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-auto-columns: minmax(250px, 1fr);
+  grid-auto-flow: column;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.planning-column {
+  min-height: 420px;
+}
+
+.planning-header {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.planning-header > div {
+  display: grid;
+}
+
+.column-meta {
+  color: #505050;
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.column-empty {
+  border: 1px dashed #c4c4c4;
+  border-radius: 6px;
+  padding: 18px 8px;
+  text-align: center;
+}
+
+.new-sprint-column {
+  min-height: 120px;
+}
+
+.closed-strip {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dfdfdf;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.closed-chip {
+  align-items: center;
+  background: #f4f4f4;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px 10px;
+}
+
+/* Graph */
+
+.graph-canvas {
+  background: #fafafa;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  height: 560px;
+}
+
+.graph-node {
+  background: #ffffff;
+  border: 1px solid #cfcfcf;
+  border-left: 5px solid var(--status-backlog);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  height: 74px;
+  padding: 8px 10px;
+  width: 220px;
+}
+
+.graph-node strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-node small {
+  color: #707070;
+}
+
+.graph-node.status-selected { border-left-color: var(--status-selected); }
+.graph-node.status-in_progress { border-left-color: var(--status-in_progress); }
+.graph-node.status-blocked { border-left-color: var(--status-blocked); }
+.graph-node.status-done { border-left-color: var(--status-done); opacity: 0.4; }
+.graph-node.subtask-node { border-style: dashed; }
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 10px;
+}
+
+.legend-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.legend-item::before {
+  background: var(--status-backlog);
+  border-radius: 3px;
+  content: "";
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.legend-item.status-selected::before { background: var(--status-selected); }
+.legend-item.status-in_progress::before { background: var(--status-in_progress); }
+.legend-item.status-blocked::before { background: var(--status-blocked); }
+.legend-item.status-done::before { background: var(--status-done); opacity: 0.4; }
+.legend-item.warning-edge::before { background: none; border-top: 2px dashed #c62828; border-radius: 0; height: 0; width: 18px; }
+.legend-item.subtask-node::before { background: none; border: 1px dashed #707070; }
+
+.checkbox-label {
+  align-items: center;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.checkbox-label input {
+  min-height: 0;
+  width: auto;
+}
+
+.button-row select {
+  width: auto;
+}
+
+/* Discussion */
+
+.discussion-picker {
+  min-width: 280px;
+}
+
+.new-post {
+  margin-bottom: 4px;
+}
+
+.posts {
+  display: grid;
+  gap: 10px;
+}
+
+.message {
+  background: #ffffff;
+  border: 1px solid #e3e3e3;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.message header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.message-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.message-text {
+  margin: 6px 0 0;
+}
+
+.replies {
+  border-left: 3px solid #eeeeee;
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding-left: 12px;
+}
+
+.message.reply {
+  background: #fafafa;
+}
+
+.reply-box {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .two-columns,
+  .story-fields,
+  .stat-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-panel {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  grid-column: 1 / -1;
+  padding: 10px 14px;
+}
+
+.team-panel .panel-title,
+.team-panel .team-hint {
+  margin: 0;
+}
+
+.team-panel .team-hint {
+  margin-left: auto;
+}
+
+.button-row > button {
+  width: auto;
+}
+
+.board-panel {
+  align-content: start;
+}
+
+.new-sprint-column {
+  align-self: start;
+}
+
+.card-actions select {
+  font-size: 13px;
+  min-height: 30px;
+  padding: 4px 6px;
+}

@@ -1,0 +1,31 @@
+# Requests a review from each area's owner (TEST-8). Branch protection does not *require* code-owner review,
+# so any teammate's approval still counts (D-4).
+#
+# TODO(team): replace the handles below with real GitHub usernames, then uncomment (OPEN_ITEMS.md).
+#
+# Platform: Johnny
+# /backend/alembic/                      @johnny-github-handle
+# /backend/app/deps.py                   @johnny-github-handle
+# /backend/app/routers/auth.py           @johnny-github-handle
+# /backend/app/services/auth.py          @johnny-github-handle
+# /backend/app/services/soft_delete.py   @johnny-github-handle
+# /.github/                              @johnny-github-handle
+#
+# Sprint flow: Bella
+# /backend/app/routers/sprints.py        @bella-github-handle
+# /backend/app/routers/planning.py       @bella-github-handle
+# /backend/app/services/moves.py         @bella-github-handle
+# /backend/app/services/metrics.py       @bella-github-handle
+# /frontend/src/features/planning/       @bella-github-handle
+# /frontend/src/features/metrics/        @bella-github-handle
+#
+# AI: Eason
+# /backend/app/services/llm.py           @eason-github-handle
+# /backend/app/services/github_client.py @eason-github-handle
+# /backend/app/services/sprint_review.py @eason-github-handle
+# /backend/app/services/analysis.py      @eason-github-handle
+# /frontend/src/features/ai/             @eason-github-handle
+#
+# Graph and discussion: Taft
+# /frontend/src/features/graph/          @taft-github-handle
+# /frontend/src/features/discussion/     @taft-github-handle
