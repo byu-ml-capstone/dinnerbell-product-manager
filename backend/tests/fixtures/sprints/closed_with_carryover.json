@@ -1,0 +1,40 @@
+{
+  "sprint": {
+    "name": "Sprint 3",
+    "goal": "Recipe search and the first planner screens.",
+    "status": "closed",
+    "start_date": "2026-10-19",
+    "end_date": "2026-10-30",
+    "is_overdue": false,
+    "closing_notes": "Search shipped; the meal plan view slipped.",
+    "today": "2026-10-30"
+  },
+  "metrics": {
+    "committed_points": 16,
+    "completed_points": 8,
+    "remaining_points": 8,
+    "percent_complete": 50.0,
+    "scope_added_points": 0,
+    "scope_removed_points": 0,
+    "days_elapsed": 12,
+    "days_remaining": 0,
+    "unpointed_story_count": 0,
+    "points_per_day": 1.1,
+    "estimated_completion_date": "2026-11-07"
+  },
+  "velocity_history": [
+    {"sprint": "Sprint 1", "committed_points": 10, "completed_points": 8},
+    {"sprint": "Sprint 2", "committed_points": 16, "completed_points": 13}
+  ],
+  "stories": [
+    {"title": "Recipe search API", "parent_story": null, "status": "done", "priority": "high", "points": 5, "assignee": "Eason", "description": "", "acceptance_criteria": "Search by ingredient and by name.", "blocked_by": [], "days_since_update": 4, "stale": false, "latest_comment": null},
+    {"title": "Recipe card UI", "parent_story": null, "status": "done", "priority": "medium", "points": 3, "assignee": "Taft", "description": "", "acceptance_criteria": "", "blocked_by": [], "days_since_update": 2, "stale": false, "latest_comment": null},
+    {"title": "Weekly meal plan view", "parent_story": null, "status": "in_progress", "priority": "urgent", "points": 8, "assignee": "Taft", "description": "A seven-day grid of planned meals.", "acceptance_criteria": "Shows seven days.", "blocked_by": [], "days_since_update": 1, "stale": false, "latest_comment": {"author": "Taft", "text": "Drag and drop is half done."}}
+  ],
+  "unfinished_stories_left_in_sprint": ["Weekly meal plan view"],
+  "sprint_review": null,
+  "recent_discussion": [
+    {"author": "Johnny", "text": "Let's carry the meal plan view into Sprint 4.", "posted_at": "2026-10-30T20:00:00+00:00"}
+  ],
+  "additional_context": null
+}

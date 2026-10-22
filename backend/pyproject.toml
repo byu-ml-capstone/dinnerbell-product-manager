@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+# Optional local linting (TEST-6); not enforced in CI.
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = ["alembic/versions"]

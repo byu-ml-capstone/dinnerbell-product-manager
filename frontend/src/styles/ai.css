@@ -1,0 +1,140 @@
+/* AI panel: analysis history, sprint review table. */
+
+/* AI panel */
+
+.history-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.history-item {
+  align-items: flex-start;
+  background: #f6f6f6;
+  border-color: #e3e3e3;
+  color: #0a0a0a;
+  display: grid;
+  justify-content: stretch;
+  text-align: left;
+}
+
+.history-item.active {
+  border-color: #0a0a0a;
+}
+
+.history-item small {
+  color: #707070;
+}
+
+.report-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.markdown h4 {
+  font-size: 15px;
+  margin: 14px 0 6px;
+}
+
+.markdown p {
+  margin: 6px 0;
+}
+
+.markdown ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.failed-box {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.data-sent summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.data-sent pre {
+  background: #f6f6f6;
+  border-radius: 6px;
+  font-size: 12px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.review-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.review-panel select {
+  width: auto;
+}
+
+.progress {
+  display: grid;
+  gap: 6px;
+}
+
+.progress-bar {
+  background: #eeeeee;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-bar i {
+  background: #0a0a0a;
+  display: block;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.verdict {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.verdict.good { background: #dcfce7; color: #15803d; }
+.verdict.warn { background: #fef3c7; color: #b45309; }
+.verdict.bad { background: #fee2e2; color: #b91c1c; }
+.verdict.muted { background: #eeeeee; color: #505050; }
+.verdict.outline { border: 1px solid #9e9e9e; color: #505050; }
+
+.mismatch {
+  color: var(--warn);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.expanded-row td {
+  background: #fafafa;
+}
+
+.criteria-list,
+.evidence-list {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.criterion.met strong { color: var(--status-done); }
+.criterion.partial strong { color: var(--warn); }
+.criterion.not_met strong { color: #b91c1c; }
+.criterion strong {
+  font-size: 11px;
+  margin-right: 4px;
+  text-transform: uppercase;
+}
+
+.unlinked h4 {
+  font-size: 14px;
+  margin: 10px 0 4px;
+}

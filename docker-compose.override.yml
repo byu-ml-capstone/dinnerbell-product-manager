@@ -1,8 +1,14 @@
+# Local-only settings (Coolify ignores this file). Ports can be changed in .env with APP_PORT and DB_PORT.
 services:
   frontend:
     ports:
-      - "8080:80"
+      - "${APP_PORT:-8080}:80"
 
   backend:
     environment:
-      - FRONTEND_ORIGIN=http://localhost:8080
+      - FRONTEND_ORIGIN=http://localhost:${APP_PORT:-8080}
+
+  db:
+    # Lets pytest and alembic on the host reach the local database (MIG-5).
+    ports:
+      - "${DB_PORT:-5432}:5432"

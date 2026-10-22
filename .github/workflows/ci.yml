@@ -17,6 +17,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: appuser
+          POSTGRES_PASSWORD: apppass
+          POSTGRES_DB: appdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U appuser -d appdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://appuser:apppass@localhost:5432/appdb
     steps:
       - uses: actions/checkout@v4.2.2
 
@@ -34,8 +50,11 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Backend smoke check
-        run: cd backend && python ci_check.py
+      - name: Apply migrations and check they match the models
+        run: cd backend && alembic upgrade head && alembic check
+
+      - name: Backend tests
+        run: cd backend && pytest -q
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -62,4 +81,3 @@ jobs:
         run: |
           curl -fsSL -X POST "${{ secrets.COOLIFY_DEPLOY_WEBHOOK_PROD }}" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-
