@@ -1,3 +1,5 @@
+import pytest
+
 from .helpers import active_sprint, add_member, create_project, create_story, me, ok, update_story
 
 
@@ -36,6 +38,28 @@ def test_update_project_and_repo_url(client):
     assert client.put(f"/api/projects/{project['id']}", json={"github_repo_url": "https://gitlab.com/x/y"}).status_code == 422
     cleared = ok(client.put(f"/api/projects/{project['id']}", json={"github_repo_url": None}))
     assert cleared["github_repo_url"] is None
+
+
+@pytest.mark.parametrize("suffix", ["", ".git/"])
+def test_repo_url_length_is_checked_after_normalization(client, suffix):
+    project = create_project(client)
+    prefix = "https://github.com/owner/"
+    repo_url = prefix + "r" * (512 - len(prefix))
+    updated = ok(client.put(f"/api/projects/{project['id']}", json={"github_repo_url": repo_url + suffix}))
+    assert updated["github_repo_url"] == repo_url
+
+    response = client.put(f"/api/projects/{project['id']}", json={"github_repo_url": repo_url + "r" + suffix})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Repository URL must be at most 512 characters after normalization"
+    assert ok(client.get(f"/api/projects/{project['id']}"))["github_repo_url"] == repo_url
+
+
+def test_non_member_cannot_update_repo_url(client, other_client):
+    project = create_project(client)
+    response = other_client.put(
+        f"/api/projects/{project['id']}", json={"github_repo_url": "https://github.com/owner/" + "r" * 512}
+    )
+    assert response.status_code == 403
 
 
 def test_add_and_remove_members(client, other_client):

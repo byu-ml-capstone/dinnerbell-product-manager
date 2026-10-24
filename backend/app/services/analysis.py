@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..database import SessionLocal
 from ..models import Comment, Dependency, Sprint, SprintAnalysis, SprintMessage, SprintReview, Story
 from . import clock
-from .llm import AnalysisLLM
+from .llm import AnalysisLLM, provider_error_message
 from .metrics import closed_sprints, sprint_metrics
 from .sprints import is_closed, is_overdue, sprint_status
 
@@ -170,8 +170,9 @@ def run_analysis(analysis_id: str, llm: AnalysisLLM) -> None:
             analysis.usage = usage
             analysis.status = "complete"
         except Exception as exc:  # any provider failure becomes a visible, retryable error
-            logger.error("Sprint analysis %s for sprint %s failed: %s", analysis.id, analysis.sprint_id, exc)
+            message = provider_error_message(exc)
+            logger.error("Sprint analysis %s for sprint %s failed: %s", analysis.id, analysis.sprint_id, message)
             analysis.status = "failed"
-            analysis.error = _cut(str(exc) or exc.__class__.__name__, 1000)
+            analysis.error = message
         analysis.completed_at = clock.now()
         db.commit()

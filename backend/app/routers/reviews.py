@@ -29,7 +29,7 @@ def start_review(
     if github is None:
         raise HTTPException(status_code=503, detail="GitHub token not configured. Set GITHUB_TOKEN.")
     if llm is None:
-        raise HTTPException(status_code=503, detail="Sprint review isn't configured. Set REVIEW_LLM_API_KEY and REVIEW_LLM_MODEL.")
+        raise HTTPException(status_code=503, detail="Sprint review isn't configured. Set OPENAI_API_KEY (or REVIEW_LLM_API_KEY) and REVIEW_LLM_MODEL.")
     running = db.query(SprintReview).filter(SprintReview.sprint_id == sprint.id, SprintReview.status.in_(ACTIVE_STATUSES)).first()
     if running:
         raise HTTPException(status_code=409, detail="A sprint review is already running for this sprint")

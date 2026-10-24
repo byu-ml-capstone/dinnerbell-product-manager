@@ -17,7 +17,7 @@ from ..models import Sprint, SprintReview, SprintReviewItem, Story
 from . import clock
 from .github_client import GitHubClient, GitHubError
 from .github_links import parse_repo
-from .llm import ReviewLLM
+from .llm import ReviewLLM, provider_error_message
 from .sprints import is_closed
 
 logger = logging.getLogger(__name__)
@@ -477,8 +477,9 @@ class StoryReviewer:
                         {"type": "function_call_output", "call_id": call.call_id, "output": tools.execute(call.name, call.arguments)}
                     )
         except Exception as exc:  # provider errors become a per-story "can't tell", not a failed review
-            logger.error("Sprint review %s: AI call failed for story %s: %s", self.review.id, story.id, exc)
-            return {"verdict": "cant_tell", "summary": f"The AI call failed: {exc}"}
+            message = provider_error_message(exc)
+            logger.error("Sprint review %s: AI call failed for story %s: %s", self.review.id, story.id, message)
+            return {"verdict": "cant_tell", "summary": f"The AI call failed: {message}"}
 
         try:
             parsed = VerdictOut.model_validate(json.loads(text or ""))
@@ -594,7 +595,7 @@ def run_review(review_id: str, llm: ReviewLLM, github: GitHubClient) -> None:
                 reviewer._add_usage(turn.usage)
                 summary = turn.text or fallback_summary(items, unlinked)
             except Exception as exc:
-                logger.error("Sprint review %s: summary call failed: %s", review.id, exc)
+                logger.error("Sprint review %s: summary call failed: %s", review.id, provider_error_message(exc))
                 summary = fallback_summary(items, unlinked)
             review.summary_markdown = summary
             review.usage = dict(reviewer.usage)

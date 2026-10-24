@@ -6,6 +6,8 @@ here, so add new items to this file. Spec IDs are in brackets.
 
 Last updated: 2026-10-20
 
+**Eason branch update, 2026-10-23:** the user selected direct OpenAI `gpt-6-luna` for both AI features. The branch now accepts one backend-only `OPENAI_API_KEY`, plus optional separate provider keys. This is an implementation override for `eason`; the historical team decisions below still need team review. Do not remove `OPENAI_API_KEY` when deploying this branch. See `AI_SETUP_TESTING.md` for current configuration and verification. The class proxy settings below are only needed if the team switches back to that route.
+
 ## 1. Before the first deploy to staging
 
 - [ ] **Approve committing the build and opening the PR**
@@ -21,7 +23,7 @@ Last updated: 2026-10-20
 - [ ] **Update the environment variables in Coolify** (OPS-3) · Johnny
   - **Needed:** in both the staging and production apps:
     - **Add** `APP_TIMEZONE=America/Denver` and `SESSION_COOKIE_SECURE=false`.
-    - **Remove** `OPENAI_API_KEY`, `OPENAI_MODEL` and `DEFAULT_USER_ID`, which are no longer used.
+    - **Remove** the old `OPENAI_MODEL` and `DEFAULT_USER_ID`. On `eason`, **keep/set** `OPENAI_API_KEY` for the direct OpenAI route.
     - **Don't set** `SEED_DEMO_DATA`.
 
 - [ ] **Set up branch protection** on `staging` and `main` (TEST-5)

@@ -1,0 +1,12 @@
+# Local GitHub-links preview with its own Compose project and database
+# Run with docker-compose.yaml, excluding docker-compose.override.yml
+services:
+  frontend:
+    image: dinnerbell-eason-frontend:local
+    ports:
+      - "127.0.0.1:8082:80"
+  backend:
+    image: dinnerbell-eason-backend:local
+    environment:
+      FRONTEND_ORIGIN: http://localhost:8082
+      SEED_DEMO_DATA: "true"

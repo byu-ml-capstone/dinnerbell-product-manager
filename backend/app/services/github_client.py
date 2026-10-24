@@ -43,15 +43,21 @@ class GitHubClient:
             raise GitHubError(f"Couldn't reach GitHub: {exc}") from exc
         if response.status_code == 404 and allow_404:
             return None
-        if response.status_code >= 400:
+        if response.status_code >= 300:
             raise GitHubError(f"GitHub returned {response.status_code} for {path}")
-        return response.json()
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise GitHubError("GitHub returned an invalid JSON response") from exc
 
     def get_branch(self, owner: str, repo: str, branch: str) -> dict | None:
         return self._get(f"/repos/{owner}/{repo}/branches/{_quote_path(branch)}", allow_404=True)
 
     def find_pulls_for_branch(self, owner: str, repo: str, branch: str) -> list[dict]:
-        pulls = self._get(f"/repos/{owner}/{repo}/pulls", {"state": "all", "head": f"{owner}:{branch}", "per_page": 10}) or []
+        pulls = self._get(
+            f"/repos/{owner}/{repo}/pulls",
+            {"state": "all", "head": f"{owner}:{branch}", "sort": "created", "direction": "desc", "per_page": 10},
+        ) or []
         return sorted(pulls, key=lambda pull: pull.get("created_at") or "", reverse=True)
 
     def get_pull_files(self, owner: str, repo: str, number: int) -> list[dict]:

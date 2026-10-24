@@ -27,9 +27,9 @@ export function AiPanel() {
       {!sprint ? (
         <p className="muted">Create or select a sprint to use the AI tools.</p>
       ) : tab === "analysis" ? (
-        <AnalysisPanel sprint={sprint} />
+        <AnalysisPanel key={sprint.id} sprint={sprint} />
       ) : (
-        <SprintReviewPanel sprint={sprint} />
+        <SprintReviewPanel key={sprint.id} sprint={sprint} />
       )}
     </section>
   );

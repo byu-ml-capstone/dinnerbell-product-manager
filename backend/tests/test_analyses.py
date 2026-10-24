@@ -137,6 +137,12 @@ def test_not_configured_returns_503(client):
     assert client.post(f"/api/sprints/{sprint['id']}/analyses", json={}).status_code == 503
 
 
+def test_unconfigured_analysis_still_checks_membership(client, other_client):
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    assert other_client.post(f"/api/sprints/{sprint['id']}/analyses", json={}).status_code == 403
+
+
 def test_stale_jobs_are_marked_failed_on_startup(client):
     project = create_project(client)
     sprint = active_sprint(client, project["id"])
