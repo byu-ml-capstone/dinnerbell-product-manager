@@ -95,10 +95,12 @@ def test_closing_starts_an_analysis_with_metrics_and_unfinished_work(client):
     assert analysis["created_by_id"] is None
     snapshot = analysis["input_snapshot"]
     assert snapshot["unfinished_stories_left_in_sprint"] == ["Left over"]
+    assert snapshot["metrics"]["estimated_completion_date"] == "not enough data"
     for key in ("committed_points", "completed_points", "remaining_points", "estimated_completion_date"):
         assert key in snapshot["metrics"]
     system, user = fake.prompts[-1]
     assert "## Unfinished Work Left in Sprint" in system
+    assert "For a closed sprint, do not give a completion date estimate" in system
     assert '"completed_points": 5' in user
 
 

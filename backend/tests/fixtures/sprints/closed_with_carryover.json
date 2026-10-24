@@ -20,7 +20,7 @@
     "days_remaining": 0,
     "unpointed_story_count": 0,
     "points_per_day": 1.1,
-    "estimated_completion_date": "2026-11-07"
+    "estimated_completion_date": null
   },
   "velocity_history": [
     {"sprint": "Sprint 1", "committed_points": 10, "completed_points": 8},

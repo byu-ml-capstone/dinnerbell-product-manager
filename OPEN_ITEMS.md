@@ -4,17 +4,18 @@ Everything on this list is something the AI build of `Initial-App` couldn't fini
 needed from the team to close it. This is the single list of open items: §18 of `SPRINT_PLANNER_SPEC.md` points
 here, so add new items to this file. Spec IDs are in brackets.
 
-Last updated: 2026-10-20
+Last updated: 2026-10-24 (Eason local verification; online items not revalidated)
 
 **Eason branch update, 2026-10-23:** the user selected direct OpenAI `gpt-6-luna` for both AI features. The branch now accepts one backend-only `OPENAI_API_KEY`, plus optional separate provider keys. This is an implementation override for `eason`; the historical team decisions below still need team review. Do not remove `OPENAI_API_KEY` when deploying this branch. See `AI_SETUP_TESTING.md` for current configuration and verification. The class proxy settings below are only needed if the team switches back to that route.
 
 ## 1. Before the first deploy to staging
 
 - [ ] **Approve committing the build and opening the PR**
-  - **State:** all the work is uncommitted on `Initial-App`.
+  - **State:** Eason's local changes are committed on `eason`; push and PR are pending. See `LOCAL_VERIFICATION.md`.
   - **Needed:** a go-ahead to commit and open a PR into `staging`, then one teammate's approval on it (D-4).
 
 - [ ] **Wipe the staging database** (MIG-3) · Johnny
+  - **Historical scope:** original Initial-App migration task, not a requirement of these Eason changes. This branch has no schema changes; verify the current deployed state before acting on this old item.
   - **Why:** the new schema is created from scratch by Alembic and can't migrate over the base app's tables, so the first deploy fails until the old tables are gone.
   - **Needed:** in the Coolify terminal on the staging `db` container, run
     `psql -U appuser -d appdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`
@@ -29,32 +30,16 @@ Last updated: 2026-10-20
 - [ ] **Set up branch protection** on `staging` and `main` (TEST-5)
   - **Needed:** someone with admin rights requires one approving review and a passing `test` check on both branches. Alternatively, tell me it's OK to do this with the `gh` CLI.
 
-## 2. To turn on the AI features
+## 2. AI and GitHub integration
 
-These features return a "not configured" message until the settings below are in Coolify. Everything else works without them.
-
-- [ ] **LiteLLM settings for sprint analysis** (AI-7) · Eason
-  - **Needed:** the class LiteLLM proxy URL, its key and the model name to use. They go into `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_API_KEY` and `ANALYSIS_LLM_MODEL`.
-
-- [ ] **Codex model for the sprint review** (AI-7) · Eason
-  - **Needed:**
-    - The exact Codex model name, which goes into `REVIEW_LLM_MODEL`.
-    - Whether we reach it through LiteLLM or directly at OpenAI:
-      - **Through LiteLLM:** set `REVIEW_LLM_BASE_URL` to the proxy URL.
-      - **Directly at OpenAI:** leave it empty and put our OpenAI token in `REVIEW_LLM_API_KEY`.
-    - Confirmation that the model supports tool calls through the Responses API.
-
-- [ ] **Read-only GitHub token** (REPO-4, GH-8) · Eason
-  - **Needed:** a fine-grained token for the DinnerBell repo with *Contents*, *Pull requests* and *Metadata* set to read-only. The `byu-ml-capstone` org may need to approve it. Store it as `GITHUB_TOKEN` in Coolify for staging and production.
-
-- [ ] **Set the project's repo URL** (GH-4) · Eason
-  - **Needed:** after the deploy, create the DinnerBell project and paste its GitHub repo URL into the Settings tab.
-
-- [ ] **Check the AI against the real services**
-  - **Why:** the AI and GitHub code has only been tested against fakes. It hasn't run against the real LiteLLM proxy, Codex model or GitHub.
-  - **Needed:** once the settings above are in place, run these from `backend/` with the real environment variables, and read the results in `backend/ai_eval_out/`:
-    - `python -m scripts.ai_eval`, which runs the analysis prompt on three sample sprints.
-    - `python -m scripts.ai_eval --review <sprint_id>` on a staging sprint that has linked branches.
+- [x] **Local OpenAI configuration** (AI-7) · Eason
+  - Direct OpenAI `gpt-6-luna` is verified for both features: Analysis `medium`, Review `high`, using the backend-only shared key. The class proxy remains an optional alternative.
+- [x] **Local GitHub access and repository URL** (REPO-4, GH-4, GH-8) · Eason
+  - The supplied local token queried `byu-ml-capstone/dinnerbell-product-manager`. The repository and real branches are saved in the local verification project. No token is stored in Git.
+- [x] **Real-service verification**
+  - Three analysis samples, merged/deleted-branch PR lookup, branch without PR, missing branch, code-backed and missing-feature verdicts, no-link handling, unchanged-result reuse and close-trigger analysis are verified. See `LOCAL_VERIFICATION.md` for results, boundaries and frontend steps.
+- [ ] **Online configuration and verification** · deployment owner
+  - Set the API keys, model/effort settings and GitHub token in Coolify; configure the online project's repository and branches, then repeat frontend checks after staging deploy. Local `.env` is not uploaded by Git. Online work is outside the completed local scope.
 
 ## 3. Decisions to confirm
 

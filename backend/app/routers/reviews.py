@@ -8,7 +8,7 @@ from ..schemas.reviews import ReviewDetail, ReviewRead
 from ..services.github_client import GitHubClient, get_github_client
 from ..services.jobs import ACTIVE_STATUSES
 from ..services.llm import ReviewLLM, get_review_llm
-from ..services.sprint_review import run_review
+from ..services.sprint_review import Evidence, normalize_evidence, run_review
 
 router = APIRouter(prefix="/api", tags=["reviews"])
 
@@ -57,4 +57,6 @@ def get_review(review_id: str, db: Session = Depends(get_db), user: User = Depen
     active = {story_id for (story_id,) in db.query(Story.id).filter(Story.id.in_(story_ids))} if story_ids else set()
     detail = ReviewDetail.model_validate(review)
     detail.items = [item for item in detail.items if item.story_id in active]
+    for item in detail.items:
+        item.evidence = [entry.model_dump() for entry in normalize_evidence([Evidence.model_validate(row) for row in item.evidence])]
     return detail

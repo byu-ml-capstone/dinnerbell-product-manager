@@ -94,7 +94,7 @@ OpenAI key 足够运行 Analysis。真实 Review 还需要：
 
 是否真的自动上线，还取决于 GitHub Secrets `COOLIFY_DEPLOY_WEBHOOK_PROD`、`COOLIFY_API_TOKEN` 是否有效，以及 Coolify 应用是否绑定正确仓库和 `main`。本次只验证了仓库中的配置，没有验证线上 Secrets 或 Coolify 后台。
 
-首次部署本改动，需要在 Coolify 后端运行环境设置 `OPENAI_API_KEY`、以上两组模型配置和 `GITHUB_TOKEN`；本地 `.env` 不会随 merge 上传。线上不要使用两个本地 Compose override，也不要设置 `SEED_DEMO_DATA=true`。后续走团队既有 staging → main PR 流程，检查 GitHub Actions 和 Coolify 的部署结果；本次没有提交、push、merge 或触发线上部署。
+首次部署本改动，需要在 Coolify 后端运行环境设置 `OPENAI_API_KEY`、以上两组模型配置和 `GITHUB_TOKEN`；本地 `.env` 不会随 merge 上传。线上不要使用两个本地 Compose override，也不要设置 `SEED_DEMO_DATA=true`。后续走团队既有 staging → main PR 流程，检查 GitHub Actions 和 Coolify 的部署结果；相关变更已本地提交到 `eason`，尚未 push、merge 或触发线上部署。
 
 ## 6. 改动位置和验证边界
 
@@ -107,3 +107,6 @@ OpenAI key 足够运行 Analysis。真实 Review 还需要：
 - `backend/tests/ai_ui_preview.py`、`compose.github-ui-demo.yaml`：独立无费用的前端验收环境。
 
 2026-10-23 本地验证：后端 158 tests passed，`alembic check` 无模型差异，前端生产构建成功。真实 `gpt-6-luna` 文本请求成功，Responses 只读工具调用及结构化输出往返成功；8082 从前端生成的八段报告在 Docker 重启后仍可查看。8083 已操作验证保存 Final、历史保留、新草稿选中、超时 Retry、切换 sprint、四类 Review 结果及 commit 文件证据；两页 console 无 error。尚未配置真实 `GITHUB_TOKEN`，因此真实 GitHub Review 全链路待验证。mock 结果不代表模型对真实仓库的质量评估。
+
+
+2026-10-24 更新：真实 GitHub 与 OpenAI medium/high 联调已完成，当前验证结果及前端入口见 [LOCAL_VERIFICATION.md](LOCAL_VERIFICATION.md)。上面的 2026-10-23 记录是当时的历史验证状态。
