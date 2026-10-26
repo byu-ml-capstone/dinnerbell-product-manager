@@ -111,9 +111,9 @@ function Message({ message, sprintId, onChanged, onDeleted, children }) {
   const replyDraftKey = `${draftPrefix}:reply`;
 
   useEffect(() => {
-    if (mode === "edit") storage.set(editDraftKey, draft);
+    if (mode === "edit") storage.set(editDraftKey, draft === message.text ? null : draft);
     if (mode === "reply") storage.set(replyDraftKey, draft);
-  }, [draft, editDraftKey, mode, replyDraftKey]);
+  }, [draft, editDraftKey, message.text, mode, replyDraftKey]);
 
   async function act(action) {
     setError("");
@@ -185,7 +185,7 @@ function Message({ message, sprintId, onChanged, onDeleted, children }) {
         <form className="comment-box" onSubmit={(event) => (event.preventDefault(), act(() => messagesApi.update(message.id, draft)))}>
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Edit message" />
           <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setMode(null)}>
+            <button type="button" className="secondary-button" onClick={() => { storage.set(editDraftKey, null); setMode(null); }}>  
               Cancel
             </button>
             <button disabled={!draft.trim()}>Save</button>
