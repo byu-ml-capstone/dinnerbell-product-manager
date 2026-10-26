@@ -165,6 +165,8 @@ For Docker Compose, put these in the root `.env` (copy `.env.example`). For a di
 
 When the AI or GitHub variables are empty, those features return a clear 503 and the rest of the app works.
 
+To try sprint analysis locally, set the three `ANALYSIS_LLM_*` variables in your `.env` and connect to the campus network or the BYU VPN. The proxy has a private BYU address, so it can't be reached from anywhere else. Ask a teammate for the key, and never commit it.
+
 ## Tests
 
 The tests run against Postgres, because partial unique indexes and JSON columns behave differently on SQLite.
