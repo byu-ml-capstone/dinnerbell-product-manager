@@ -137,13 +137,15 @@ These backend environment variables are set in Coolify for staging and productio
 | `APP_TIMEZONE` | no | Decides "today" for sprint status and burndown (default `America/Denver`) |
 | `SESSION_COOKIE_SECURE` | no | `false` on the class deploy, which is HTTP only |
 | `SEED_DEMO_DATA` | no | Local development only |
-| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Class LiteLLM proxy and model for sprint analysis |
+| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Class LiteLLM proxy and model for sprint analysis: `http://ml-capstone.cs.byu.edu:4000/v1` and `classroom-chat` |
 | `ANALYSIS_LLM_API_KEY` | yes | LiteLLM key |
 | `REVIEW_LLM_BASE_URL`, `REVIEW_LLM_MODEL` | no | Codex model for the sprint review. Leave the URL empty to call OpenAI directly |
 | `REVIEW_LLM_API_KEY` | yes | OpenAI token or LiteLLM key |
 | `GITHUB_TOKEN` | yes | Fine-grained, read-only token for the project repo (Contents, Pull requests, Metadata: read) |
 
 When the AI or GitHub variables are empty, those features return a clear 503 and the rest of the app works.
+
+To try sprint analysis locally, set the three `ANALYSIS_LLM_*` variables in your `.env` and connect to the campus network or the BYU VPN. The proxy has a private BYU address, so it can't be reached from anywhere else. Ask a teammate for the key, and never commit it.
 
 ## Tests
 

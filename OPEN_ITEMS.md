@@ -4,7 +4,7 @@ Everything on this list is something the AI build of `Initial-App` couldn't fini
 needed from the team to close it. This is the single list of open items: §18 of `SPRINT_PLANNER_SPEC.md` points
 here, so add new items to this file. Spec IDs are in brackets.
 
-Last updated: 2026-10-20
+Last updated: 2026-10-26
 
 ## 1. Before the first deploy to staging
 
@@ -18,11 +18,12 @@ Last updated: 2026-10-20
     `psql -U appuser -d appdb -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`
     right before `Initial-App` is merged to `staging`.
 
-- [ ] **Update the environment variables in Coolify** (OPS-3) · Johnny
-  - **Needed:** in both the staging and production apps:
-    - **Add** `APP_TIMEZONE=America/Denver` and `SESSION_COOKIE_SECURE=false`.
-    - **Remove** `OPENAI_API_KEY`, `OPENAI_MODEL` and `DEFAULT_USER_ID`, which are no longer used.
-    - **Don't set** `SEED_DEMO_DATA`.
+- [x] **Update the environment variables in Coolify** (OPS-3) · Johnny
+  - **Done 2026-10-26** in both the staging and production apps:
+    - **Added** `APP_TIMEZONE=America/Denver` and `SESSION_COOKIE_SECURE=false`.
+    - **Removed** `OPENAI_MODEL` and `DEFAULT_USER_ID`, which are no longer used.
+    - **Kept** `OPENAI_API_KEY` for now. Nothing reads it, but it holds our OpenAI token. When the sprint review is set up, move its value into `REVIEW_LLM_API_KEY` and then remove it.
+    - `SEED_DEMO_DATA` isn't set.
 
 - [ ] **Set up branch protection** on `staging` and `main` (TEST-5)
   - **Needed:** someone with admin rights requires one approving review and a passing `test` check on both branches. Alternatively, tell me it's OK to do this with the `gh` CLI.
@@ -31,16 +32,17 @@ Last updated: 2026-10-20
 
 These features return a "not configured" message until the settings below are in Coolify. Everything else works without them.
 
-- [ ] **LiteLLM settings for sprint analysis** (AI-7) · Eason
-  - **Needed:** the class LiteLLM proxy URL, its key and the model name to use. They go into `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_API_KEY` and `ANALYSIS_LLM_MODEL`.
+- [x] **LiteLLM settings for sprint analysis** (AI-7) · Johnny
+  - **Done 2026-10-26:** `ANALYSIS_LLM_BASE_URL=http://ml-capstone.cs.byu.edu:4000/v1` and `ANALYSIS_LLM_MODEL=classroom-chat`, with our LiteLLM key in `ANALYSIS_LLM_API_KEY`. They're set in Coolify for staging and production, and a sprint analysis ran on both.
+  - The proxy has a private BYU address, so it's only reachable on the campus network or the BYU VPN. That includes running sprint analysis locally.
 
 - [ ] **Codex model for the sprint review** (AI-7) · Eason
   - **Needed:**
     - The exact Codex model name, which goes into `REVIEW_LLM_MODEL`.
     - Whether we reach it through LiteLLM or directly at OpenAI:
       - **Through LiteLLM:** set `REVIEW_LLM_BASE_URL` to the proxy URL.
-      - **Directly at OpenAI:** leave it empty and put our OpenAI token in `REVIEW_LLM_API_KEY`.
-    - Confirmation that the model supports tool calls through the Responses API.
+      - **Directly at OpenAI:** leave it empty and put our OpenAI token in `REVIEW_LLM_API_KEY`. The token is in Coolify as `OPENAI_API_KEY` for now.
+    - Confirmation that the model supports tool calls through the Responses API. The proxy only offers `classroom-chat`, `classroom-autocomplete` and `classroom-transcribe`, and none of them has been checked for this yet.
 
 - [ ] **Read-only GitHub token** (REPO-4, GH-8) · Eason
   - **Needed:** a fine-grained token for the DinnerBell repo with *Contents*, *Pull requests* and *Metadata* set to read-only. The `byu-ml-capstone` org may need to approve it. Store it as `GITHUB_TOKEN` in Coolify for staging and production.
@@ -49,7 +51,7 @@ These features return a "not configured" message until the settings below are in
   - **Needed:** after the deploy, create the DinnerBell project and paste its GitHub repo URL into the Settings tab.
 
 - [ ] **Check the AI against the real services**
-  - **Why:** the AI and GitHub code has only been tested against fakes. It hasn't run against the real LiteLLM proxy, Codex model or GitHub.
+  - **Why:** sprint analysis ran against the real LiteLLM proxy on 2026-10-26, but the sprint review and GitHub code have only been tested against fakes. They haven't run against the real Codex model or GitHub.
   - **Needed:** once the settings above are in place, run these from `backend/` with the real environment variables, and read the results in `backend/ai_eval_out/`:
     - `python -m scripts.ai_eval`, which runs the analysis prompt on three sample sprints.
     - `python -m scripts.ai_eval --review <sprint_id>` on a staging sprint that has linked branches.
