@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import SprintReview
+from app.models import SprintReview, SprintReviewItem
 from app.services.github_client import get_github_client
 from app.services.llm import get_review_llm
 
@@ -108,6 +108,50 @@ def test_review_gives_each_story_a_verdict(client, sprint_setup):
     assert review["summary_markdown"] == llm.summary
     assert review["usage"]["tool_calls"] == 7
     assert [pull["pr_number"] for pull in review["unlinked_work"]] == [20]
+
+
+@pytest.mark.parametrize("changed_setting", ["model", "reasoning_effort"])
+def test_changed_model_or_effort_does_not_reuse_old_verdict(client, sprint_setup, changed_setting):
+    _project, sprint, _stories = sprint_setup
+    first_llm, github = install(FakeReviewLLM(standard_scripts()))
+    first_llm.reasoning_effort = "low"
+    start(client, sprint["id"])
+
+    next_llm = FakeReviewLLM(standard_scripts())
+    next_llm.reasoning_effort = "low"
+    setattr(next_llm, changed_setting, "high" if changed_setting == "reasoning_effort" else "another-review-model")
+    install(next_llm, github)
+    review = start(client, sprint["id"])
+    assert by_title(review)["Recipe search"]["reused_from_item_id"] is None
+    assert next_llm.story_calls("Recipe search") > 0
+
+
+def test_disjoint_evidence_ranges_and_old_history_get_separate_links(client, sprint_setup):
+    _project, sprint, stories = sprint_setup
+    scripts = standard_scripts()
+    evidence = [{"path": "backend/app/grocery.py", "lines": "L1-L2, 4, 7 - 9", "commit": None, "note": "Separate source ranges"}]
+    scripts["Grocery list"] = [verdict_turn("matches", evidence=evidence)]
+    install(FakeReviewLLM(scripts))
+    review = start(client, sprint["id"])
+    assert [row["lines"] for row in by_title(review)["Grocery list"]["evidence"]] == ["1-2", "4", "7-9"]
+    # Existing reports may already contain the model's comma-separated format
+    with SessionLocal() as db:
+        item = db.query(SprintReviewItem).filter_by(review_id=review["id"], story_id=stories["partial"]["id"]).one()
+        item.evidence = evidence
+        db.commit()
+    historical = ok(client.get(f"/api/reviews/{review['id']}"))
+    assert [row["lines"] for row in by_title(historical)["Grocery list"]["evidence"]] == ["1-2", "4", "7-9"]
+
+
+@pytest.mark.parametrize("lines", ["0", "4-1", "not a line"])
+def test_invalid_line_numbers_do_not_support_matches(client, sprint_setup, lines):
+    _project, sprint, _stories = sprint_setup
+    scripts = standard_scripts()
+    scripts["Grocery list"] = [verdict_turn("matches", evidence=[{"path": "backend/app/grocery.py", "lines": lines}])]
+    install(FakeReviewLLM(scripts))
+    item = by_title(start(client, sprint["id"]))["Grocery list"]
+    assert item["verdict"] == "cant_tell"
+    assert item["evidence"][0]["lines"] is None
 
 
 def test_tools_follow_the_file_policy(client, sprint_setup):

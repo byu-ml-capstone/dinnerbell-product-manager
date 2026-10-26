@@ -16,6 +16,8 @@ def normalize_repo_url(value: str | None) -> str | None:
     url = value.strip().rstrip("/")
     if url.endswith(".git"):
         url = url[:-4].rstrip("/")
+    if len(url) > 512:
+        raise HTTPException(status_code=422, detail="Repository URL must be at most 512 characters after normalization")
     if not REPO_PATTERN.match(url):
         raise HTTPException(status_code=422, detail="Repository URL must look like https://github.com/<owner>/<repo>")
     return url
@@ -36,10 +38,11 @@ def normalize_branch(value: str | None, repo_url: str | None) -> str | None:
     match = BRANCH_URL_PATTERN.match(branch)
     if match:
         owner, repo, branch = match.group(1), match.group(2), match.group(3).rstrip("/")
-        if repo_url:
-            project_owner, project_repo = parse_repo(repo_url)
-            if (owner.lower(), repo.lower()) != (project_owner.lower(), project_repo.lower()):
-                raise HTTPException(status_code=400, detail="Branch URL is for a different repository")
+        if not repo_url:
+            raise HTTPException(status_code=400, detail="Set the project's GitHub repository in Settings before pasting a branch URL, or enter a branch name")
+        project_owner, project_repo = parse_repo(repo_url)
+        if (owner.lower(), repo.lower()) != (project_owner.lower(), project_repo.lower()):
+            raise HTTPException(status_code=400, detail="Branch URL is for a different repository")
     if not BRANCH_PATTERN.match(branch) or ".." in branch:
         raise HTTPException(status_code=400, detail="Branch names may only use letters, numbers, '.', '_', '-' and '/'")
     return branch
@@ -58,4 +61,5 @@ def slugify(title: str, limit: int = 40) -> str:
 
 def suggested_branch(username: str, title: str) -> str:
     """Our convention: name of developer combined with task (D-6)."""
-    return f"{username}/{slugify(title)}"
+    slug = slugify(title)
+    return f"{username}/{slug}" if slug else ""

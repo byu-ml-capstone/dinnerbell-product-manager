@@ -7,6 +7,7 @@ from pathlib import Path
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://appuser:apppass@localhost:5432/appdb")
 # CI never calls a real AI or GitHub API (TEST-4).
 for key in (
+    "OPENAI_API_KEY",
     "ANALYSIS_LLM_BASE_URL",
     "ANALYSIS_LLM_API_KEY",
     "ANALYSIS_LLM_MODEL",
@@ -26,8 +27,7 @@ from sqlalchemy import text  # noqa: E402
 
 from app.database import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.routers import github as github_router  # noqa: E402
-from app.services import clock  # noqa: E402
+from app.services import clock, github_status  # noqa: E402
 
 from .helpers import PASSWORD, ok, register  # noqa: E402
 
@@ -48,7 +48,7 @@ def database():
 def clean_state():
     yield
     app.dependency_overrides.clear()
-    github_router.clear_cache()
+    github_status.clear_cache()
     tables = ", ".join(table.name for table in Base.metadata.sorted_tables)
     with engine.begin() as connection:
         connection.execute(text(f"TRUNCATE {tables} CASCADE"))
