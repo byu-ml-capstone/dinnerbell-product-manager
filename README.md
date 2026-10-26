@@ -78,8 +78,25 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 - **Dependencies.** Blockers are managed from the story drawer. The read-only graph uses React Flow and dagre. Duplicate and circular blocker links are rejected, and the app warns when a story is planned before its blocker.
 - **Soft delete.** Nothing is ever deleted for good. Children are deleted and restored with their parent, through a Trash tab and a 10-second Undo.
 - **GitHub links.** Each project records its repo URL, and each story records a branch. The story drawer shows the suggested branch name and the live PR status.
-- **AI.** Sprint analysis goes through the class LiteLLM proxy. The sprint review uses a Codex model that reads each story's code with read-only GitHub tools and gives an advice-only verdict.
+- **AI.** On `eason`, analysis and sprint review default to OpenAI `gpt-6-luna`, sharing a backend-only `OPENAI_API_KEY`. Review reads linked code through read-only GitHub tools and gives advice without changing stories. Separate provider settings remain available for the class proxy. See [AI setup and frontend testing](AI_SETUP_TESTING.md).
 - **Discussion.** Each sprint has its own board, with one level of replies.
+
+## High-level architecture
+
+The application runs as three separate services. The frontend serves the React UI, the FastAPI backend owns
+application logic and API access, and PostgreSQL persists application data.
+
+```mermaid
+flowchart LR
+    user([Browser]) -->|HTTP| frontend[Frontend service<br/>React + Vite<br/>port 80]
+    frontend -->|/api requests| backend[Backend service<br/>FastAPI + SQLAlchemy<br/>port 8000]
+    backend -->|SQL| database[(Database service<br/>PostgreSQL 16<br/>port 5432)]
+
+    classDef service fill:#eef6ff,stroke:#2563eb,stroke-width:1.5px,color:#111827
+    classDef data fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#111827
+    class frontend,backend service
+    class database data
+```
 
 ## Layout
 
@@ -129,7 +146,7 @@ cd ../frontend && npm install && npm run dev      # http://localhost:5173 (proxi
 
 ## Configuration
 
-These backend environment variables are set in Coolify for staging and production. See `backend/.env.example`.
+For Docker Compose, put these in the root `.env` (copy `.env.example`). For a directly launched backend, use `backend/.env.example`. Set production values separately in Coolify; your local `.env` is ignored by Git.
 
 | Variable | Secret? | Purpose |
 |---|---|---|
@@ -137,10 +154,13 @@ These backend environment variables are set in Coolify for staging and productio
 | `APP_TIMEZONE` | no | Decides "today" for sprint status and burndown (default `America/Denver`) |
 | `SESSION_COOKIE_SECURE` | no | `false` on the class deploy, which is HTTP only |
 | `SEED_DEMO_DATA` | no | Local development only |
-| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Class LiteLLM proxy and model for sprint analysis: `http://ml-capstone.cs.byu.edu:4000/v1` and `classroom-chat` |
-| `ANALYSIS_LLM_API_KEY` | yes | LiteLLM key |
-| `REVIEW_LLM_BASE_URL`, `REVIEW_LLM_MODEL` | no | Codex model for the sprint review. Leave the URL empty to call OpenAI directly |
-| `REVIEW_LLM_API_KEY` | yes | OpenAI token or LiteLLM key |
+| `OPENAI_API_KEY` | yes | Shared key for both AI features when using the official OpenAI HTTPS endpoint |
+| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Default `https://api.openai.com/v1` and `gpt-6-luna` |
+| `ANALYSIS_LLM_API_KEY` | yes | Optional analysis-specific key; overrides the shared key; required for a custom proxy |
+| `REVIEW_LLM_BASE_URL`, `REVIEW_LLM_MODEL` | no | OpenAI Responses endpoint and model, default `gpt-6-luna`; empty URL uses OpenAI directly |
+| `REVIEW_LLM_API_KEY` | yes | Optional review-specific key; overrides the shared key; required for a custom proxy |
+| `ANALYSIS_LLM_REASONING_EFFORT`, `REVIEW_LLM_REASONING_EFFORT` | no | Compose defaults to `medium` for analysis and `high` for review |
+| `ANALYSIS_LLM_MAX_OUTPUT_TOKENS`, `REVIEW_LLM_MAX_OUTPUT_TOKENS` | no | Per-request limits, default `4096` and `6000`, including reasoning tokens |
 | `GITHUB_TOKEN` | yes | Fine-grained, read-only token for the project repo (Contents, Pull requests, Metadata: read) |
 
 When the AI or GitHub variables are empty, those features return a clear 503 and the rest of the app works.

@@ -41,8 +41,8 @@ export function SprintReviewPanel({ sprint }) {
     setError("");
     try {
       const created = await reviewsApi.start(sprint.id);
-      setSelectedId(created.id);
       await list.reload();
+      setSelectedId(created.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -107,6 +107,7 @@ function ReviewDetail({ id, repoUrl, listStatus, itemsDone }) {
 
   return (
     <div className="review-detail">
+      <p className="muted">{review.model}</p>
       {RUNNING.includes(review.status) && (
         <div className="progress">
           <Spinner label={`Reviewing ${review.items_done} of ${review.items_total || "?"} stories…`} />

@@ -7,7 +7,7 @@ from ..models import Sprint, SprintAnalysis, User
 from ..schemas.analyses import AnalysisCreate, AnalysisDetail, AnalysisRead, AnalysisSave
 from ..services import clock
 from ..services.analysis import build_analysis_input, run_analysis
-from ..services.llm import AnalysisLLM, require_analysis_llm
+from ..services.llm import AnalysisLLM, get_analysis_llm, require_analysis_llm
 
 router = APIRouter(prefix="/api", tags=["analyses"])
 
@@ -34,10 +34,11 @@ def create_analysis(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-    llm: AnalysisLLM = Depends(require_analysis_llm),
+    llm: AnalysisLLM | None = Depends(get_analysis_llm),
 ) -> AnalysisRead:
     # Works for planned, active and closed sprints (A-9); the AI call runs in the background (AI-11).
     sprint = get_sprint_for_member(db, sprint_id, user)
+    llm = require_analysis_llm(llm)
     snapshot, metrics = build_analysis_input(db, sprint, payload.additional_context.strip())
     analysis = SprintAnalysis(
         sprint_id=sprint.id,

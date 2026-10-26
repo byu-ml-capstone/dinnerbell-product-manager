@@ -33,9 +33,9 @@ export function AnalysisPanel({ sprint }) {
     setError("");
     try {
       const created = await analysesApi.create(sprint.id, context);
-      setSelectedId(created.id);
       setContext("");
       await list.reload();
+      setSelectedId(created.id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,7 +72,7 @@ export function AnalysisPanel({ sprint }) {
         </div>
       </div>
       {selectedId ? (
-        <AnalysisDetail id={selectedId} onRetry={run} listStatus={analyses.find((item) => item.id === selectedId)?.status} />
+        <AnalysisDetail id={selectedId} onRetry={run} onSaved={list.reload} listStatus={analyses.find((item) => item.id === selectedId)?.status} />
       ) : (
         <div className="panel muted">Run an analysis to see it here.</div>
       )}
@@ -80,7 +80,7 @@ export function AnalysisPanel({ sprint }) {
   );
 }
 
-function AnalysisDetail({ id, onRetry, listStatus }) {
+function AnalysisDetail({ id, onRetry, onSaved, listStatus }) {
   // Reloads when polling sees the status change.
   const detail = useAsync(() => analysesApi.get(id), [id, listStatus]);
   const [content, setContent] = useState("");
@@ -101,6 +101,7 @@ function AnalysisDetail({ id, onRetry, listStatus }) {
       await analysesApi.save(id, content);
       await detail.reload();
       setEditing(false);
+      await onSaved();
     } catch (err) {
       setError(err.message);
     }

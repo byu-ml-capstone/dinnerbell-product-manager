@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import posixpath
+import re
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, selectinload
@@ -17,7 +18,7 @@ from ..models import Sprint, SprintReview, SprintReviewItem, Story
 from . import clock
 from .github_client import GitHubClient, GitHubError
 from .github_links import parse_repo
-from .llm import ReviewLLM
+from .llm import ReviewLLM, provider_error_message
 from .sprints import is_closed
 
 logger = logging.getLogger(__name__)
@@ -338,6 +339,23 @@ def has_cited_evidence(evidence: list[Evidence]) -> bool:
     return any((item.path and item.lines) or item.commit for item in evidence)
 
 
+def normalize_evidence(evidence: list[Evidence]) -> list[Evidence]:
+    """GitHub anchors support one positive line or contiguous range per link"""
+    normalized = []
+    for item in evidence:
+        ranges = []
+        for part in (item.lines or "").split(","):
+            match = re.fullmatch(r"\s*L?([1-9]\d*)(?:\s*-\s*L?([1-9]\d*))?\s*", part)
+            if not match:
+                continue
+            start = int(match[1])
+            end = int(match[2]) if match[2] else start
+            if end >= start:
+                ranges.append(str(start) if end == start else f"{start}-{end}")
+        normalized.extend(item.model_copy(update={"lines": span}) for span in ranges or [None])
+    return normalized
+
+
 def _no_criteria_note(story: Story, summary: str) -> str:
     if story.acceptance_criteria.strip():
         return summary
@@ -352,7 +370,18 @@ class StoryReviewer:
         self.github = github
         self.owner = owner
         self.repo = repo
-        self.usage = {"input_tokens": 0, "output_tokens": 0, "tool_calls": 0, "llm_calls": 0}
+        profile = {
+            "model": llm.model,
+            "reasoning_effort": getattr(llm, "reasoning_effort", None),
+            "max_output_tokens": getattr(llm, "max_output_tokens", None),
+            "base_url": str(getattr(getattr(llm, "client", None), "base_url", "")),
+            "prompt": SYSTEM_PROMPT,
+            "tools": TOOLS,
+            "verdict_schema": VERDICT_SCHEMA,
+        }
+        # Keep configuration metadata in the existing JSON field, without credentials
+        profile_hash = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
+        self.usage = {"input_tokens": 0, "output_tokens": 0, "tool_calls": 0, "llm_calls": 0, "review_profile": profile_hash}
 
     def _add_usage(self, usage: dict) -> None:
         self.usage["llm_calls"] += 1
@@ -382,6 +411,8 @@ class StoryReviewer:
                 SprintReviewItem.story_id == story.id,
                 SprintReview.status == "complete",
                 SprintReview.id != self.review.id,
+                SprintReview.repo_url == self.review.repo_url,
+                SprintReview.usage["review_profile"].as_string() == self.usage["review_profile"],
             )
             .order_by(SprintReviewItem.created_at.desc())
             .first()
@@ -477,8 +508,9 @@ class StoryReviewer:
                         {"type": "function_call_output", "call_id": call.call_id, "output": tools.execute(call.name, call.arguments)}
                     )
         except Exception as exc:  # provider errors become a per-story "can't tell", not a failed review
-            logger.error("Sprint review %s: AI call failed for story %s: %s", self.review.id, story.id, exc)
-            return {"verdict": "cant_tell", "summary": f"The AI call failed: {exc}"}
+            message = provider_error_message(exc)
+            logger.error("Sprint review %s: AI call failed for story %s: %s", self.review.id, story.id, message)
+            return {"verdict": "cant_tell", "summary": f"The AI call failed: {message}"}
 
         try:
             parsed = VerdictOut.model_validate(json.loads(text or ""))
@@ -488,6 +520,7 @@ class StoryReviewer:
             return {"verdict": "cant_tell", "summary": "The AI returned an unknown verdict."}
         verdict = parsed.verdict
         summary = parsed.summary
+        parsed.evidence = normalize_evidence(parsed.evidence)
         if verdict in ("matches", "partial") and not has_cited_evidence(parsed.evidence):
             verdict = "cant_tell"
             summary = f"No evidence cited. {summary}".strip()
@@ -594,7 +627,7 @@ def run_review(review_id: str, llm: ReviewLLM, github: GitHubClient) -> None:
                 reviewer._add_usage(turn.usage)
                 summary = turn.text or fallback_summary(items, unlinked)
             except Exception as exc:
-                logger.error("Sprint review %s: summary call failed: %s", review.id, exc)
+                logger.error("Sprint review %s: summary call failed: %s", review.id, provider_error_message(exc))
                 summary = fallback_summary(items, unlinked)
             review.summary_markdown = summary
             review.usage = dict(reviewer.usage)

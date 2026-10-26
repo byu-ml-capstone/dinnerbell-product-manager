@@ -39,7 +39,8 @@ export function SettingsView({ onProjectDeleted }) {
     event.preventDefault();
     setError("");
     try {
-      await projectsApi.update(project.id, { ...form, github_repo_url: form.github_repo_url.trim() || null });
+      const saved = await projectsApi.update(project.id, { ...form, github_repo_url: form.github_repo_url.trim() || null });
+      setForm(projectForm(saved));
       show("Project settings saved");
       await Promise.all([changed(), reloadProjects()]);
     } catch (err) {

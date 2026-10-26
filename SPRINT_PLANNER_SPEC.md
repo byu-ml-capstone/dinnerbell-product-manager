@@ -1024,13 +1024,13 @@ The basic rules every other feature builds on.
 
 ## 9. F3: GitHub links
 
-**Goal** (`ARCH_SYNTH.md` decision 3): every sprint and story can point to the GitHub branch, pull request or issue it belongs to, so we always know what each branch is for. The links are also how the AI code review (§10.2) finds the code.
+**Goal** (`ARCH_SYNTH.md` decision 3, narrowed by D-32): each project records one GitHub repository, and each story can optionally name one development branch, so we know what the branch is for. Sprints have no separate links. These branches are also how the AI code review (§10.2) finds the code. PR lookup remains subject to the Proposed decisions below.
 
 **Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
-**Starting point**
+**Starting point (before Initial-App)**
 
-- Nothing exists: sprints and stories have no link fields. The `GitPullRequest` icon in the UI is only used as a "blocked" badge.
+- Before Initial-App, sprints and stories had no link fields and the `GitPullRequest` icon was only a "blocked" badge. Initial-App added the fields, API and UI described below; this section remains in review.
 
 **Questions**
 
@@ -1123,6 +1123,7 @@ The basic rules every other feature builds on.
 
 - Fine-grained tokens for an organization's repo may need an org admin to approve them. We all have admin rights (C-3), but someone has to actually do it (§18).
 - Branch names are free text, so a typo just shows as "Branch not found".
+- Edge behavior confirmed by Eason on 2026-10-23 for this implementation: if a title produces an empty slug, return no suggested branch and ask the user to enter a branch manually. Without a project repository, branch names can still be saved; pasted branch URLs require a repository first so the destination can be checked. This confirmation does not mark the remaining Proposed decisions as team-approved.
 
 ---
 
@@ -1133,6 +1134,8 @@ The basic rules every other feature builds on.
 **Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
 **Naming used in this section:** **Sprint analysis** (§10.1) is the progress report. **Sprint review** (§10.2) is the AI check of linked code against what the sprint claims. The template calls it "code review". Johnny called it "sprint review" in Q&A-7 because it runs per sprint (D-39), so the API, tables and UI use that name.
+
+**Eason implementation override (2026-10-23, user requested):** both features use direct OpenAI `gpt-6-luna` and a shared backend-only `OPENAI_API_KEY`. Analysis uses Chat Completions; review uses Responses with read-only tools and structured verdicts. Separate `ANALYSIS_LLM_*` / `REVIEW_LLM_*` settings remain available for a class proxy. This records the current branch implementation, not a replacement team approval of AI-7 / Q&A-7. The historical decisions and remaining Proposed answers below are preserved. See `AI_SETUP_TESTING.md` for setup and frontend checks.
 
 **Starting point**
 
@@ -1306,6 +1309,7 @@ The basic rules every other feature builds on.
 
     `has_tests` can be `true`, `false` or `null`. `no_link` is never returned by the AI; the server sets it for stories with no branch (REPO-16). Reason: verdicts we can check are the whole point of A-10.
 - [ ] **REPO-9** If a story's code hasn't changed since its last review (same commit), do we reuse the old result?
+  - Eason implementation guard (2026-10-24): reuse also requires the same repository and review profile (model, reasoning effort, output limit, endpoint, prompt, tools and verdict schema). A profile hash is stored in the existing `usage` JSON. Historical reviews without a profile are evaluated again. Disjoint evidence line ranges are exposed as separate GitHub links, including in old reports. No schema migration is required. This clarification preserves the Proposed approval status below.
   - Decision: **Proposed:** Yes. If the newest completed review of this story has the same `head_sha` and the same hash of title, acceptance criteria and status, the old item is copied, with `reused_from_item_id` set and no AI call. The UI shows "(unchanged since <date>)". Reason: this saves time and tokens when we review the same sprint again.
 - [ ] **REPO-10** A review could take a minute or more. Does it run in the background, with progress shown?
   - Decision: **Proposed:** Yes. It's the same background pattern as AI-11. `sprint_reviews` has `items_total` and `items_done`, which the UI checks every 3 seconds and shows as "Reviewing 4 of 9 stories…". Only one review can run per sprint at a time; starting another returns 409. Reason: a sprint of 10 stories with tool calls could take several minutes.
