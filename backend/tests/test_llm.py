@@ -113,6 +113,25 @@ def test_analysis_sdk_sends_luna_low_effort_and_completion_limit(sdk):
     assert "temperature" not in body and "top_p" not in body
 
 
+@pytest.mark.parametrize("effort", [None, "none"])
+def test_classroom_analysis_omits_disabled_reasoning_and_keeps_token_limit(sdk, effort):
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        body = json.loads(request.content)
+        if "reasoning_effort" in body:
+            return httpx.Response(400, json={"error": {"message": "Unsupported reasoning_effort"}})
+        return httpx.Response(200, json=chat_response())
+
+    text, _ = AnalysisLLM(sdk(respond), "classroom-chat", effort, 4096).complete("Use given metrics", "Sprint data")
+    assert text == "## Summary\nOn track."
+    body = json.loads(requests[0].content)
+    assert body["model"] == "classroom-chat"
+    assert "reasoning_effort" not in body
+    assert body["max_completion_tokens"] == 4096
+
+
 @pytest.mark.parametrize("text,finish,expected", [("Partial", "length", "token limit"), (None, "stop", "empty response")])
 def test_analysis_rejects_truncated_or_empty_output(sdk, text, finish, expected):
     client = sdk(lambda request: httpx.Response(200, json=chat_response(text, finish)))

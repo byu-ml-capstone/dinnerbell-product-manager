@@ -62,7 +62,7 @@ class AnalysisLLM:
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "max_completion_tokens": self.max_output_tokens,
         }
-        if self.reasoning_effort:
+        if self.reasoning_effort and self.reasoning_effort != "none":
             kwargs["reasoning_effort"] = self.reasoning_effort
         response = self.client.chat.completions.create(**kwargs)
         if response.choices and response.choices[0].finish_reason == "length":
