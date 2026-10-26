@@ -81,6 +81,23 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 - **AI.** On `eason`, analysis and sprint review default to OpenAI `gpt-6-luna`, sharing a backend-only `OPENAI_API_KEY`. Review reads linked code through read-only GitHub tools and gives advice without changing stories. Separate provider settings remain available for the class proxy. See [AI setup and frontend testing](AI_SETUP_TESTING.md).
 - **Discussion.** Each sprint has its own board, with one level of replies.
 
+## High-level architecture
+
+The application runs as three separate services. The frontend serves the React UI, the FastAPI backend owns
+application logic and API access, and PostgreSQL persists application data.
+
+```mermaid
+flowchart LR
+    user([Browser]) -->|HTTP| frontend[Frontend service<br/>React + Vite<br/>port 80]
+    frontend -->|/api requests| backend[Backend service<br/>FastAPI + SQLAlchemy<br/>port 8000]
+    backend -->|SQL| database[(Database service<br/>PostgreSQL 16<br/>port 5432)]
+
+    classDef service fill:#eef6ff,stroke:#2563eb,stroke-width:1.5px,color:#111827
+    classDef data fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#111827
+    class frontend,backend service
+    class database data
+```
+
 ## Layout
 
 ```
@@ -151,6 +168,8 @@ When the AI or GitHub variables are empty, those features return a clear 503 and
 For the classroom `classroom-chat` proxy, set `ANALYSIS_LLM_REASONING_EFFORT=none` to omit the unsupported
 reasoning parameter. Keep `ANALYSIS_LLM_API_KEY` set to the classroom key. This does not change the separate
 `REVIEW_LLM_*` settings.
+
+To try sprint analysis locally, set the three `ANALYSIS_LLM_*` variables in your `.env` and connect to the campus network or the BYU VPN. The proxy has a private BYU address, so it can't be reached from anywhere else. Ask a teammate for the key, and never commit it.
 
 ## Tests
 

@@ -121,7 +121,8 @@
 }
 
 .board {
-  align-items: start;
+  /* Keep every status column the height of the tallest column. */
+  align-items: stretch;
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(5, minmax(145px, 1fr));

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageSquare, Pencil, Reply, Trash2 } from "lucide-react";
 import { messagesApi } from "../../api/messages";
 import { useAsync } from "../../api/useAsync";
@@ -7,7 +7,7 @@ import { FormError } from "../../components/ErrorBanner";
 import { PanelTitle } from "../../components/PanelTitle";
 import { useUndoDelete } from "../../components/useUndoDelete";
 import { formatDateTime, relativeTime } from "../../format";
-import { useWorkspace } from "../../workspace";
+import { storage, useWorkspace } from "../../workspace";
 import { usePolling } from "../ai/usePolling";
 import { SprintPicker } from "../sprints/SprintPicker";
 
@@ -33,12 +33,17 @@ export function DiscussionView() {
 }
 
 function Board({ sprintId }) {
-  const { version } = useWorkspace();
+  const { project, user, version } = useWorkspace();
   const undoDelete = useUndoDelete();
   const messages = useAsync(() => messagesApi.list(sprintId), [sprintId, version]);
-  const [text, setText] = useState("");
+  const draftKey = `dbpm-discussion-draft:${user.id}:${project.id}:${sprintId}:new`;
+  const [text, setText] = useState(() => storage.get(draftKey) || "");
   const [error, setError] = useState("");
   const lastSeen = useRef(null);
+
+  useEffect(() => {
+    storage.set(draftKey, text);
+  }, [draftKey, text]);
 
   const posts = messages.data || [];
   const allTimes = posts.flatMap((post) => [post, ...post.replies]).flatMap((item) => [item.created_at, item.edited_at]).filter(Boolean);
@@ -60,6 +65,7 @@ function Board({ sprintId }) {
     try {
       await messagesApi.create(sprintId, text);
       setText("");
+      storage.set(draftKey, null);
       await reload();
     } catch (err) {
       setError(err.message);
@@ -94,17 +100,26 @@ function Board({ sprintId }) {
 }
 
 function Message({ message, sprintId, onChanged, onDeleted, children }) {
-  const { user } = useWorkspace();
+  const { project, user } = useWorkspace();
   const [mode, setMode] = useState(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const isPost = !message.parent_message_id;
   const mine = message.author_id === user.id;
+  const draftPrefix = `dbpm-discussion-draft:${user.id}:${project.id}:${sprintId}:${message.id}`;
+  const editDraftKey = `${draftPrefix}:edit`;
+  const replyDraftKey = `${draftPrefix}:reply`;
+
+  useEffect(() => {
+    if (mode === "edit") storage.set(editDraftKey, draft === message.text ? null : draft);
+    if (mode === "reply") storage.set(replyDraftKey, draft);
+  }, [draft, editDraftKey, message.text, mode, replyDraftKey]);
 
   async function act(action) {
     setError("");
     try {
       await action();
+      storage.set(mode === "edit" ? editDraftKey : replyDraftKey, null);
       setMode(null);
       setDraft("");
       await onChanged();
@@ -127,7 +142,13 @@ function Message({ message, sprintId, onChanged, onDeleted, children }) {
         )}
         <span className="message-actions">
           {isPost && (
-            <button className="ghost-button compact" onClick={() => setMode(mode === "reply" ? null : "reply")}>
+            <button
+              className="ghost-button compact"
+              onClick={() => {
+                setDraft(storage.get(replyDraftKey) || "");
+                setMode(mode === "reply" ? null : "reply");
+              }}
+            >
               <Reply size={13} /> Reply
             </button>
           )}
@@ -136,7 +157,7 @@ function Message({ message, sprintId, onChanged, onDeleted, children }) {
               <button
                 className="ghost-button compact"
                 onClick={() => {
-                  setDraft(message.text);
+                  setDraft(storage.get(editDraftKey) || message.text);
                   setMode(mode === "edit" ? null : "edit");
                 }}
               >
@@ -164,7 +185,7 @@ function Message({ message, sprintId, onChanged, onDeleted, children }) {
         <form className="comment-box" onSubmit={(event) => (event.preventDefault(), act(() => messagesApi.update(message.id, draft)))}>
           <textarea value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Edit message" />
           <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => setMode(null)}>
+            <button type="button" className="secondary-button" onClick={() => { storage.set(editDraftKey, null); setMode(null); }}>  
               Cancel
             </button>
             <button disabled={!draft.trim()}>Save</button>
