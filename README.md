@@ -81,6 +81,23 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 - **AI.** Sprint analysis goes through the class LiteLLM proxy. The sprint review uses a Codex model that reads each story's code with read-only GitHub tools and gives an advice-only verdict.
 - **Discussion.** Each sprint has its own board, with one level of replies.
 
+## High-level architecture
+
+The application runs as three separate services. The frontend serves the React UI, the FastAPI backend owns
+application logic and API access, and PostgreSQL persists application data.
+
+```mermaid
+flowchart LR
+    user([Browser]) -->|HTTP| frontend[Frontend service<br/>React + Vite<br/>port 80]
+    frontend -->|/api requests| backend[Backend service<br/>FastAPI + SQLAlchemy<br/>port 8000]
+    backend -->|SQL| database[(Database service<br/>PostgreSQL 16<br/>port 5432)]
+
+    classDef service fill:#eef6ff,stroke:#2563eb,stroke-width:1.5px,color:#111827
+    classDef data fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#111827
+    class frontend,backend service
+    class database data
+```
+
 ## Layout
 
 ```
