@@ -2,13 +2,12 @@
 
 Sprint analysis: Chat Completions (ANALYSIS_LLM_*)
 Sprint review: Responses API with function tools (REVIEW_LLM_*)
-Eason selected gpt-6-luna for both; explicit settings can still use a class proxy
+AI-7: class LiteLLM for analysis, direct OpenAI for review, with separate keys
 """
 
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
 
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 
 from ..config import settings
@@ -38,15 +37,6 @@ def provider_error_message(error: Exception) -> str:
         }
         return messages.get(error.status_code, f"The AI provider returned HTTP {error.status_code}. Try again later.")
     return "The AI request failed. Try again or check the backend configuration."
-
-
-def _api_key(explicit_key: str | None, base_url: str | None) -> str | None:
-    if explicit_key:
-        return explicit_key
-    url = urlsplit(base_url or "https://api.openai.com/v1")
-    if url.scheme == "https" and url.netloc == "api.openai.com":
-        return settings.openai_api_key or None
-    return None
 
 
 class AnalysisLLM:
@@ -122,7 +112,7 @@ class ReviewLLM:
 
 
 def get_analysis_llm() -> AnalysisLLM | None:
-    key = _api_key(settings.analysis_llm_api_key, settings.analysis_llm_base_url)
+    key = settings.analysis_llm_api_key
     if not (settings.analysis_llm_base_url and settings.analysis_llm_model and key):
         return None
     client = OpenAI(
@@ -134,17 +124,17 @@ def get_analysis_llm() -> AnalysisLLM | None:
     return AnalysisLLM(client, settings.analysis_llm_model, settings.analysis_llm_reasoning_effort, settings.analysis_llm_max_output_tokens)
 
 
-def require_analysis_llm(llm: AnalysisLLM | None = Depends(get_analysis_llm)) -> AnalysisLLM:
+def require_analysis_llm(llm: AnalysisLLM | None) -> AnalysisLLM:
     if llm is None:
         raise HTTPException(
             status_code=503,
-            detail="Sprint analysis isn't configured. Set OPENAI_API_KEY (or ANALYSIS_LLM_API_KEY), ANALYSIS_LLM_BASE_URL and ANALYSIS_LLM_MODEL.",
+            detail="Sprint analysis isn't configured. Set ANALYSIS_LLM_API_KEY, ANALYSIS_LLM_BASE_URL and ANALYSIS_LLM_MODEL.",
         )
     return llm
 
 
 def get_review_llm() -> ReviewLLM | None:
-    key = _api_key(settings.review_llm_api_key, settings.review_llm_base_url)
+    key = settings.review_llm_api_key
     if not (key and settings.review_llm_model):
         return None
     client = OpenAI(

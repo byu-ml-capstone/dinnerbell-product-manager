@@ -15,7 +15,7 @@ You need **git** and **Docker Desktop**, and Docker Desktop has to be running. Y
 
    ```bash
    git fetch
-   git checkout Initial-App
+   git checkout staging
    git pull
    ```
 
@@ -62,7 +62,7 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 | Logging in as `taylor` says "Invalid username or password". | The demo data wasn't created. Either `SEED_DEMO_DATA=true` wasn't set the first time the database started, or the database already had a project. | Check that `.env` contains `SEED_DEMO_DATA=true`, then `docker compose down -v` and `docker compose up --build`. You can also just create your own account. |
 | `The "SERVICE_FQDN_FRONTEND" variable is not set. Defaulting to a blank string.` | Coolify sets this variable when it deploys the app. It isn't needed locally. | Nothing to fix; it's only a warning. |
 | "Sprint analysis isn't configured", "GitHub token not configured", or "Set the GitHub repository in Settings first" | The AI keys and the GitHub token aren't set yet (see `OPEN_ITEMS.md`). | Nothing to fix. If you have keys, add them to `.env` (see the Configuration section) and run `docker compose up -d` again. |
-| The page still says "Engineering Workflow Manager" or looks like the old app. | You're on the wrong branch, or Docker is running an old image. | Check that `git branch --show-current` prints `Initial-App`, run `docker compose up --build`, and hard-refresh the browser (`Cmd+Shift+R` on Mac, `Ctrl+Shift+R` on Windows). |
+| The page still says "Engineering Workflow Manager" or looks like the old app. | You're on the wrong branch, or Docker is running an old image. | Check that `git branch --show-current` prints `staging`, run `docker compose up --build`, and hard-refresh the browser (`Cmd+Shift+R` on Mac, `Ctrl+Shift+R` on Windows). |
 | An error mentioning `start_interval` | Your Docker is too old for the health-check settings in `docker-compose.yaml`. | Update Docker Desktop. |
 | You're suddenly logged out, or your account is gone. | `docker compose down -v` deletes every local account and session along with the data. | Log in again, or register again. The demo users come back if `SEED_DEMO_DATA=true` is set. |
 | `./smoke-test.sh: Permission denied`, or it won't run on Windows | The script isn't marked executable, or Windows has no bash. | Run `chmod +x smoke-test.sh`. On Windows, use Git Bash or WSL. The smoke test is optional. |
@@ -78,7 +78,7 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 - **Dependencies.** Blockers are managed from the story drawer. The read-only graph uses React Flow and dagre. Duplicate and circular blocker links are rejected, and the app warns when a story is planned before its blocker.
 - **Soft delete.** Nothing is ever deleted for good. Children are deleted and restored with their parent, through a Trash tab and a 10-second Undo.
 - **GitHub links.** Each project records its repo URL, and each story records a branch. The story drawer shows the suggested branch name and the live PR status.
-- **AI.** On `eason`, analysis and sprint review default to OpenAI `gpt-6-luna`, sharing a backend-only `OPENAI_API_KEY`. Review reads linked code through read-only GitHub tools and gives advice without changing stories. Separate provider settings remain available for the class proxy. See [AI setup and frontend testing](AI_SETUP_TESTING.md).
+- **AI.** Sprint analysis uses the class LiteLLM proxy (`classroom-chat`); sprint review uses OpenAI `gpt-6-luna` through Responses with read-only GitHub tools (AI-7). Each feature requires its own backend key and an explicit model. Reports and review verdicts are advice and never change stories.
 - **Discussion.** Each sprint has its own board, with one level of replies.
 
 ## High-level architecture
@@ -154,22 +154,76 @@ For Docker Compose, put these in the root `.env` (copy `.env.example`). For a di
 | `APP_TIMEZONE` | no | Decides "today" for sprint status and burndown (default `America/Denver`) |
 | `SESSION_COOKIE_SECURE` | no | `false` on the class deploy, which is HTTP only |
 | `SEED_DEMO_DATA` | no | Local development only |
-| `OPENAI_API_KEY` | yes | Shared key for both AI features when using the official OpenAI HTTPS endpoint |
-| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Default `https://api.openai.com/v1` and `gpt-6-luna` |
-| `ANALYSIS_LLM_API_KEY` | yes | Optional analysis-specific key; overrides the shared key; required for a custom proxy |
-| `REVIEW_LLM_BASE_URL`, `REVIEW_LLM_MODEL` | no | OpenAI Responses endpoint and model, default `gpt-6-luna`; empty URL uses OpenAI directly |
-| `REVIEW_LLM_API_KEY` | yes | Optional review-specific key; overrides the shared key; required for a custom proxy |
-| `ANALYSIS_LLM_REASONING_EFFORT`, `REVIEW_LLM_REASONING_EFFORT` | no | Compose defaults to `medium` for analysis and `high` for review |
+| `ANALYSIS_LLM_BASE_URL`, `ANALYSIS_LLM_MODEL` | no | Empty by default; set the class LiteLLM URL and `classroom-chat` |
+| `ANALYSIS_LLM_API_KEY` | yes | Required analysis-specific class proxy key |
+| `REVIEW_LLM_BASE_URL`, `REVIEW_LLM_MODEL` | no | Empty by default; set model `gpt-6-luna`; an empty URL uses OpenAI directly |
+| `REVIEW_LLM_API_KEY` | yes | Required review-specific OpenAI key |
+| `ANALYSIS_LLM_REASONING_EFFORT`, `REVIEW_LLM_REASONING_EFFORT` | no | Backend defaults to `medium` / `high`; set analysis to `none` for `classroom-chat` |
 | `ANALYSIS_LLM_MAX_OUTPUT_TOKENS`, `REVIEW_LLM_MAX_OUTPUT_TOKENS` | no | Per-request limits, default `4096` and `6000`, including reasoning tokens |
 | `GITHUB_TOKEN` | yes | Fine-grained, read-only token for the project repo (Contents, Pull requests, Metadata: read) |
 
-When the AI or GitHub variables are empty, those features return a clear 503 and the rest of the app works.
+Provider URLs, model names and keys have no application or Compose defaults. Missing required settings return
+a clear 503 and the rest of the app works. Remove the retired `OPENAI_API_KEY` from local and Coolify settings;
+it cannot enable either feature. Reasoning and output-limit defaults live in `backend/app/config.py`, so blank
+Compose or example-file values behave the same as a directly launched backend.
 
 For the classroom `classroom-chat` proxy, set `ANALYSIS_LLM_REASONING_EFFORT=none` to omit the unsupported
 reasoning parameter. Keep `ANALYSIS_LLM_API_KEY` set to the classroom key. This does not change the separate
 `REVIEW_LLM_*` settings.
 
-To try sprint analysis locally, set the three `ANALYSIS_LLM_*` variables in your `.env` and connect to the campus network or the BYU VPN. The proxy has a private BYU address, so it can't be reached from anywhere else. Ask a teammate for the key, and never commit it.
+Set these non-secret values in your ignored `.env` or in Coolify, and obtain the two keys separately:
+
+```dotenv
+ANALYSIS_LLM_BASE_URL=http://ml-capstone.cs.byu.edu:4000/v1
+ANALYSIS_LLM_MODEL=classroom-chat
+ANALYSIS_LLM_REASONING_EFFORT=none
+REVIEW_LLM_BASE_URL=
+REVIEW_LLM_MODEL=gpt-6-luna
+```
+
+Set `ANALYSIS_LLM_API_KEY` to the classroom key and `REVIEW_LLM_API_KEY` to the team's OpenAI key. The proxy
+is reachable only on campus or through the BYU VPN. Keys stay in the backend runtime, never in the browser or Git.
+After changing local settings, run `docker compose up -d backend` to recreate the backend with those settings.
+Staging and production have separate Coolify settings and must be verified after deployment.
+
+### GitHub and AI acceptance checks
+
+Use a disposable local project or an agreed staging test project. Local results do not close the staging
+verification items in `OPEN_ITEMS.md`.
+
+| Feature | Steps | Expected result |
+|---|---|---|
+| Repository and branches (GH-4, GH-6) | Save the project's GitHub URL in Settings; edit a story's branch or paste a same-repository `/tree/` URL | Repository and branch values are normalized; invalid and cross-repository URLs are rejected |
+| Suggestions and PR status (GH-5 to GH-8) | Copy or use the suggested branch; reopen stories with known PRs | Suggestion uses the assignee's username; status shows open, merged, closed, branch without PR or missing branch; cache lasts five minutes |
+| Analysis (AI-1 to AI-5) | Board → select a sprint → AI → Analysis → Run analysis | Completed report has eight sections and the supplied metrics; new runs preserve history |
+| Final report and history | Edit and save as final; refresh; generate another report | Final report persists and the new draft is selected; the saved final stays in history |
+| Sprint review (REPO-9) | Link real branches, then Sprint review → Run sprint review; expand story rows | Criteria, verdicts and commit-pinned evidence links appear; unlinked stories show No link; stories remain unchanged |
+| Failure and sprint switching | Check missing configuration, Retry after a failed request, and switch sprints | Clear errors; retry preserves the failed record; reports and errors belong to the selected sprint |
+| Automatic analysis (AI-2) | Close a disposable sprint while analysis is configured | History includes an On close report, unfinished work and no completion-date estimate |
+
+Real AI runs can incur provider usage. Backend tests use fake services or the real SDK with mocked HTTP responses,
+so they do not validate staging credentials, network access or real model output.
+
+### Deployment acceptance recorded on 2026-10-26
+
+Both existing branches were redeployed after configuring independent runtime keys. Coolify reported success and
+both `/health` endpoints returned 200. Analysis uses the class proxy with `classroom-chat`, reasoning `none` and
+4096 output tokens; review uses direct OpenAI `gpt-6-luna`, reasoning `high` and 6000 output tokens.
+
+| Environment | Deployed commit | Live checks |
+|---|---|---|
+| Staging | `0cee914` | Fresh analysis and review complete; linked PR #8 and unchanged-result reuse verified |
+| Production | `a18abcc` | Repository/branch normalization, merged PR #8, fresh analysis, code-backed Matches verdict with pinned evidence, reuse, Final/history persistence and automatic on-close analysis verified in a dedicated acceptance project |
+
+The production project is **Deployment acceptance 2026-10-26**; its closed **Production integration acceptance**
+sprint retains the test story and reports for inspection. Existing DinnerBell and ProjectManager stories were
+not changed. These are functional checks, not a guarantee that every generated conclusion is correct.
+
+`OPENAI_MODEL` was removed from both Coolify applications, including Preview copies. The legacy
+`OPENAI_API_KEY` values are empty and cannot supply a fallback key. Coolify currently refuses to delete those
+rows because the deployed Compose file still references the name. This review-cleanup PR removes the reference;
+after its approved deployments to staging and production, delete the obsolete empty rows and repeat smoke checks.
+The live commits above do not yet contain this PR's code changes.
 
 ## Tests
 

@@ -176,9 +176,9 @@ def test_live_status_without_pr(client, exists):
 def test_live_status_uses_latest_created_pr(client, state, merged):
     github = FakeGitHub()
     github.pulls["alice/login-page"] = [
-        {"number": 1, "created_at": "2026-10-01T00:00:00Z", "state": "closed"},
         {"number": 2, "created_at": "2026-10-02T00:00:00Z", "state": state,
          "merged_at": "2026-10-03T00:00:00Z" if merged else None},
+        {"number": 1, "created_at": "2026-10-01T00:00:00Z", "state": "closed"},
     ]
     app.dependency_overrides[get_github_client] = lambda: github
     project = project_with_repo(client)
