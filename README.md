@@ -165,6 +165,10 @@ For Docker Compose, put these in the root `.env` (copy `.env.example`). For a di
 
 When the AI or GitHub variables are empty, those features return a clear 503 and the rest of the app works.
 
+For the classroom `classroom-chat` proxy, set `ANALYSIS_LLM_REASONING_EFFORT=none` to omit the unsupported
+reasoning parameter. Keep `ANALYSIS_LLM_API_KEY` set to the classroom key. This does not change the separate
+`REVIEW_LLM_*` settings.
+
 To try sprint analysis locally, set the three `ANALYSIS_LLM_*` variables in your `.env` and connect to the campus network or the BYU VPN. The proxy has a private BYU address, so it can't be reached from anywhere else. Ask a teammate for the key, and never commit it.
 
 ## Tests
