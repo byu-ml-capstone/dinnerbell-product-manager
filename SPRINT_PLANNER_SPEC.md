@@ -62,11 +62,12 @@ Question format, before and after filling in:
   2. A closed sprint's metrics and burndown show the moment it closed (VEL-12, §12).
   3. A `capacity_warning` on every sprint, so the sprint header can show it (MOVE-9, §6).
 - **What has been verified:**
-  - 118 backend tests pass against Postgres, and `alembic check` reports no drift between the models and the migration.
+  - The PR #5 review follow-up passes 172 backend tests against disposable Postgres; `alembic check` reports no drift between the models and the migration.
   - `./smoke-test.sh` passes on the Docker stack.
   - Two scripted walkthroughs of the UI pass in headless Chrome.
   - Sprint analysis ran against the real LiteLLM proxy on 2026-10-26, locally and on staging and production.
-  - **Not yet verified:** the sprint review and GitHub features against the real Codex model and GitHub API. Their credentials aren't configured yet (see `OPEN_ITEMS.md`).
+  - Fresh class-proxy analyses and OpenAI `gpt-6-luna` reviews completed on staging and production after their 2026-10-26 configuration redeploys. Live GitHub access, pinned code evidence and reuse were verified; production also verified Final/history persistence and automatic on-close analysis using dedicated acceptance data. See the README for the deployed commits and validation boundaries.
+  - **Deployment still open:** the PR #5 review-cleanup code must pass review and be deployed before Coolify permits removal of the obsolete empty `OPENAI_API_KEY` rows. Both live environments already have the legacy key value cleared (see `OPEN_ITEMS.md`).
 - **Citations:**
   - `D-n` and `C-n` are answered items in `SPRINT_PLANNER_DECISIONS.md`.
   - `A-n` are its "Already agreed" items. They are treated as decisions, but none of them is checked off in that file yet (see `OPEN_ITEMS.md`).
@@ -201,7 +202,7 @@ Fill in the decision column for each part of the base app. This table also feeds
 | Schema management | `on_startup` in `main.py` | `Base.metadata.create_all` on every start | Replace | Alembic, run on container start (MIG-1, MIG-2). Existing databases are wiped once (MIG-3). |
 | Authentication | `backend/app/auth.py` | Trusts an `X-User-Id` header; falls back to `DEFAULT_USER_ID` | Replace | Username and password with an HTTP-only session cookie (D-13, §5.2). The header and the fallback are removed. |
 | Seed data | `backend/app/seed.py` | Four fake users and a demo project | Change | Only runs when `SEED_DEMO_DATA=true`, for local development. Never on staging or production (AUTH-5). |
-| AI reports | `backend/app/ai.py` | OpenAI Responses API; closed sprints only | Replace | Sprint analyses can run at any time and on close, and every one is kept (§10.1). They go through the LiteLLM proxy on Coolify. A separate sprint review uses a Codex model (§10.2, Q&A-5, Q&A-7). |
+| AI reports | `backend/app/ai.py` | OpenAI Responses API; closed sprints only | Replace | Sprint analyses can run at any time and on close, and every one is kept (§10.1). They go through the LiteLLM proxy on Coolify. A separate sprint review uses direct OpenAI `gpt-6-luna` (§10.2, AI-7). |
 | Frontend structure | `frontend/src/main.jsx` | One 675-line file, one page, no router | Change | Split into `App.jsx`, `api/`, `components/` and `features/<area>/` (D-3, UI-10). Keep plain JSX and no router; views are tabs (D-15, UI-2). |
 | API client | `frontend/src/api.js` | Small `fetch` wrapper; user ID kept in `localStorage` | Change | Same wrapper moved to `api/client.js`. Sends `credentials: "include"`, drops `X-User-Id` and `localStorage`, and sends the user to the login screen on a 401 (§5.2). |
 | Board drag and drop | `main.jsx` | `@dnd-kit/core` | Keep | Also used for the planning view (§11). Add `KeyboardSensor` (UI-8). |
@@ -604,9 +605,11 @@ Cross-cutting work that most features depend on.
     | `ANALYSIS_LLM_BASE_URL` | no | URL of the class LiteLLM proxy (AI-7). Coolify has `http://ml-capstone.cs.byu.edu:4000/v1` | *(empty)* |
     | `ANALYSIS_LLM_API_KEY` | yes | LiteLLM key (C-4) | *(empty)* |
     | `ANALYSIS_LLM_MODEL` | no | Model name on the LiteLLM proxy. Coolify has `classroom-chat` | *(empty)* |
-    | `REVIEW_LLM_BASE_URL` | no | Leave empty to call OpenAI directly with our OpenAI token, or set to the LiteLLM URL if it serves the Codex model (AI-7) | *(empty)* |
-    | `REVIEW_LLM_API_KEY` | yes | OpenAI token or LiteLLM key for the Codex model | *(empty)* |
-    | `REVIEW_LLM_MODEL` | no | Codex model name | *(empty; see §18)* |
+    | `REVIEW_LLM_BASE_URL` | no | Leave empty to call OpenAI directly for sprint review (AI-7) | *(empty)* |
+    | `REVIEW_LLM_API_KEY` | yes | Separate OpenAI key for sprint review | *(empty)* |
+    | `REVIEW_LLM_MODEL` | no | Set explicitly to `gpt-6-luna` (AI-7) | *(empty)* |
+    | `ANALYSIS_LLM_REASONING_EFFORT`, `REVIEW_LLM_REASONING_EFFORT` | no | Backend defaults to `medium` / `high`; set analysis to `none` for `classroom-chat` | *(empty; backend default)* |
+    | `ANALYSIS_LLM_MAX_OUTPUT_TOKENS`, `REVIEW_LLM_MAX_OUTPUT_TOKENS` | no | Per-request limits; backend defaults to `4096` / `6000` | *(empty; backend default)* |
     | `GITHUB_TOKEN` | yes | Fine-grained, read-only token for the repo (D-38, REPO-4) | *(empty)* |
 
     Remove `DEFAULT_USER_ID`, `OPENAI_API_KEY` and `OPENAI_MODEL` from `docker-compose.yaml`, `backend/.env.example` and `config.py`. When the AI or GitHub variables are empty, the matching endpoints return 503 with a clear message, and the rest of the app works normally.
@@ -1135,8 +1138,6 @@ The basic rules every other feature builds on.
 
 **Naming used in this section:** **Sprint analysis** (§10.1) is the progress report. **Sprint review** (§10.2) is the AI check of linked code against what the sprint claims. The template calls it "code review". Johnny called it "sprint review" in Q&A-7 because it runs per sprint (D-39), so the API, tables and UI use that name.
 
-**Eason implementation override (2026-10-23, user requested):** both features use direct OpenAI `gpt-6-luna` and a shared backend-only `OPENAI_API_KEY`. Analysis uses Chat Completions; review uses Responses with read-only tools and structured verdicts. Separate `ANALYSIS_LLM_*` / `REVIEW_LLM_*` settings remain available for a class proxy. This records the current branch implementation, not a replacement team approval of AI-7 / Q&A-7. The historical decisions and remaining Proposed answers below are preserved. See `AI_SETUP_TESTING.md` for setup and frontend checks.
-
 **Starting point**
 
 - `POST /api/sprints/{id}/report/draft` sends sprint details and one line per story to OpenAI (default model `gpt-5-mini`) and returns Markdown with five fixed sections.
@@ -1198,11 +1199,11 @@ The basic rules every other feature builds on.
 - [x] **AI-7** Which AI provider and model do we use? Who supplies the API key, and what's our budget?
   - Decision (D-37, C-4, Q&A-5, Q&A-7):
     - **Sprint analysis:** goes through the class **LiteLLM proxy hosted on Coolify**. It uses the `openai` Python SDK's Chat Completions API with `base_url = ANALYSIS_LLM_BASE_URL`, `api_key = ANALYSIS_LLM_API_KEY` and `model = ANALYSIS_LLM_MODEL`.
-    - **Sprint review (§10.2):** uses a **Codex model**. It goes through the Responses API, because Codex models need it, with `REVIEW_LLM_*` settings. If `REVIEW_LLM_BASE_URL` is empty, it calls OpenAI directly with the team's OpenAI access token. Otherwise it goes through LiteLLM.
-    - **Keys:** class-provided (C-4), plus our own OpenAI token if needed (Q&A-5).
+    - **Sprint review (§10.2):** uses **OpenAI `gpt-6-luna`** through the Responses API with read-only GitHub tools and structured verdicts, as accepted in Johnny's PR #5 review on 2026-10-26. Set `REVIEW_LLM_MODEL=gpt-6-luna` and `REVIEW_LLM_API_KEY` explicitly; an empty `REVIEW_LLM_BASE_URL` uses OpenAI directly. This updates the earlier Codex-model choice.
+    - **Keys and activation:** class-provided `ANALYSIS_LLM_API_KEY` for analysis (C-4), and a separate `REVIEW_LLM_API_KEY` for review (Q&A-5). The retired `OPENAI_API_KEY` is ignored. Provider/model defaults are empty so deployment settings decide which features are enabled. Reasoning defaults (`medium` / `high`) and per-request output limits (`4096` / `6000`) live in backend settings.
     - **Budget:** none strict (D-37). Usage limits are in REPO-15 and NFR-4.
 
-    **Proxy settings (2026-10-26):** the proxy is at `http://ml-capstone.cs.byu.edu:4000/v1`, and sprint analysis uses its `classroom-chat` model. It also offers `classroom-autocomplete` and `classroom-transcribe`. The proxy has a private BYU address, so it's only reachable on the campus network or the BYU VPN. The Codex model name for the sprint review is still needed (see §18).
+    **Proxy settings (2026-10-26):** the proxy is at `http://ml-capstone.cs.byu.edu:4000/v1`, and sprint analysis uses its `classroom-chat` model. Set `ANALYSIS_LLM_REASONING_EFFORT=none` to omit its unsupported reasoning parameter. It also offers `classroom-autocomplete` and `classroom-transcribe`. The proxy has a private BYU address, so it's only reachable on the campus network or the BYU VPN. Configuration and staging acceptance checks are in the README; staging verification remains open in `OPEN_ITEMS.md`.
 - [x] **AI-8** Is it OK to send our project data, comments and source code to an outside AI provider? Are there class rules about this?
   - Decision: Yes. The class provides the keys we'll use (C-4), and D-35 and A-10 have the AI read our code. The repo is private (C-1), so its code only goes to the class-provided LiteLLM and OpenAI endpoints, never anywhere else.
 - [ ] **AI-9** How do we keep it from making things up?
@@ -1454,7 +1455,7 @@ Code layout:
 
 **Risks and open questions**
 
-- The Codex model name, and whether it goes through LiteLLM or straight to OpenAI, aren't known yet (§18). The proxy only offers `classroom-chat`, `classroom-autocomplete` and `classroom-transcribe` (AI-7). The review needs a model that supports tool calls and the Responses API. LiteLLM supports `/v1/responses`, but this should be checked against our proxy.
+- AI-7 now selects direct OpenAI `gpt-6-luna` for sprint review. Staging still needs its explicit review key/model, read-only GitHub access and acceptance checks; the class analysis proxy remains a separate provider. Local verification does not establish deployed behavior.
 - `BackgroundTasks` jobs run inside the web process. A deploy in the middle of a job kills it, and the stale-job step (AI-11) marks it failed. That's acceptable for four users.
 - GitHub's rate limit (5,000 requests per hour per token) is more than enough for one review, which makes about 30 stories × 15 calls = 450 calls.
 - AI verdicts can still be wrong. REPO-11 keeps them advice only, and the evidence links let us check.
@@ -1959,6 +1960,7 @@ Record decisions that change direction, affect several features, or were hard to
 | 2026-10-20 | MOVE-9 | Every sprint in the API carries `capacity_warning`, so the sprint header and Planning share one rule | AI during the build; needs team review | MOVE-9 asked for the warning in the sprint header too |
 | 2026-10-20 | §18 | The open items list moves to `OPEN_ITEMS.md`, so there's one list to keep up to date | Johnny | |
 | 2026-10-26 | AI-7 | Sprint analysis uses the class proxy at `http://ml-capstone.cs.byu.edu:4000/v1` with the `classroom-chat` model | Johnny | Set in Coolify for staging and production. The proxy is only reachable on the BYU network or VPN |
+| 2026-10-26 | AI-7 | Keep class LiteLLM for analysis; use direct OpenAI `gpt-6-luna` for sprint review with separate feature keys and empty provider/model defaults | Johnny, PR #5 review; Eason's live verification | Replaces the earlier Codex-model choice and temporary shared-key implementation; class analysis omits reasoning via `none`; both runtime configurations are verified, while the code-cleanup deployment remains pending |
 
 ### 17.2 Clarifying questions asked while drafting
 
@@ -1980,7 +1982,7 @@ Asked by the AI and answered by Johnny on 2026-10-20 while filling in this spec 
 2. The repo-reading feature in §10.2 is called **sprint review**, because it runs per sprint (D-39), and it uses a **Codex model**.
 3. "We have openai access tokens if needed" means the Codex model can be called directly at OpenAI if LiteLLM doesn't serve it. The backend therefore has separate settings: `ANALYSIS_LLM_*` and `REVIEW_LLM_*` (OPS-3).
 
-The proxy URL and the analysis model were filled in on 2026-10-26 (AI-7). The Codex model name for the sprint review is still open (see `OPEN_ITEMS.md`).
+The proxy URL and analysis model were filled in on 2026-10-26. AI-7 and the decision log also record Johnny's PR #5 acceptance of direct OpenAI `gpt-6-luna` for sprint review, replacing the earlier Codex-model choice. The Q&A above preserves the original drafting answers.
 
 **Answer to D-18's question** ("what are the current ci tests checking?"):
 

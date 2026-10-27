@@ -4,15 +4,12 @@ Everything on this list is something the AI build of `Initial-App` couldn't fini
 needed from the team to close it. This is the single list of open items: §18 of `SPRINT_PLANNER_SPEC.md` points
 here, so add new items to this file. Spec IDs are in brackets.
 
-Last updated: 2026-10-24 (Eason local verification; online items not revalidated)
-
-**Eason branch update, 2026-10-23:** the user selected direct OpenAI `gpt-6-luna` for both AI features. The branch now accepts one backend-only `OPENAI_API_KEY`, plus optional separate provider keys. This is an implementation override for `eason`; the historical team decisions below still need team review. Do not remove `OPENAI_API_KEY` when deploying this branch. See `AI_SETUP_TESTING.md` for current configuration and verification. The class proxy settings below are only needed if the team switches back to that route.
+Last updated: 2026-10-26 (live staging and production acceptance; PR #5 cleanup deployment remains open)
 
 ## 1. Before the first deploy to staging
 
-- [ ] **Approve committing the build and opening the PR**
-  - **State:** Eason's local changes are committed on `eason`; push and PR are pending. See `LOCAL_VERIFICATION.md`.
-  - **Needed:** a go-ahead to commit and open a PR into `staging`, then one teammate's approval on it (D-4).
+- [x] **Merge the GitHub and AI implementation PR**
+  - **State:** PR #5 was merged into `staging` on 2026-10-26. Its requested cleanup is a follow-up change; merge does not establish staging acceptance.
 
 - [ ] **Wipe the staging database** (MIG-3) · Johnny
   - **Historical scope:** original Initial-App migration task, not a requirement of these Eason changes. This branch has no schema changes; verify the current deployed state before acting on this old item.
@@ -24,22 +21,28 @@ Last updated: 2026-10-24 (Eason local verification; online items not revalidated
 - [ ] **Update the environment variables in Coolify** (OPS-3) · Johnny
   - **Needed:** in both the staging and production apps:
     - **Add** `APP_TIMEZONE=America/Denver` and `SESSION_COOKIE_SECURE=false`.
-    - **Remove** the old `OPENAI_MODEL` and `DEFAULT_USER_ID`. On `eason`, **keep/set** `OPENAI_API_KEY` for the direct OpenAI route.
+    - **Remove** the old `OPENAI_MODEL`, `OPENAI_API_KEY` and `DEFAULT_USER_ID`.
+    - **Set** separate `ANALYSIS_LLM_API_KEY` and `REVIEW_LLM_API_KEY` values and the explicit AI-7 provider/model settings from the README. Class analysis also needs `ANALYSIS_LLM_REASONING_EFFORT=none`.
     - **Don't set** `SEED_DEMO_DATA`.
+  - **Verified 2026-10-26:** both environments use `America/Denver`, `SESSION_COOKIE_SECURE=false` and `SEED_DEMO_DATA=false`. Analysis uses the class proxy with reasoning `none`; review uses explicit OpenAI `gpt-6-luna`, reasoning `high`. All three integration secrets are runtime-only. `OPENAI_MODEL` and its Preview copies were removed; `DEFAULT_USER_ID` is absent.
+  - **Remaining dependency:** `OPENAI_API_KEY` values are empty in both environments and their Preview copies. Coolify refuses to delete these rows while the deployed Compose file references the name. Deploy the review-cleanup PR first, then remove the obsolete empty rows. No existing key is revoked.
 
 - [ ] **Set up branch protection** on `staging` and `main` (TEST-5)
   - **Needed:** someone with admin rights requires one approving review and a passing `test` check on both branches. Alternatively, tell me it's OK to do this with the `gh` CLI.
 
 ## 2. AI and GitHub integration
 
-- [x] **Local OpenAI configuration** (AI-7) · Eason
-  - Direct OpenAI `gpt-6-luna` is verified for both features: Analysis `medium`, Review `high`, using the backend-only shared key. The class proxy remains an optional alternative.
-- [x] **Local GitHub access and repository URL** (REPO-4, GH-4, GH-8) · Eason
-  - The supplied local token queried `byu-ml-capstone/dinnerbell-product-manager`. The repository and real branches are saved in the local verification project. No token is stored in Git.
-- [x] **Real-service verification**
-  - Three analysis samples, merged/deleted-branch PR lookup, branch without PR, missing branch, code-backed and missing-feature verdicts, no-link handling, unchanged-result reuse and close-trigger analysis are verified. See `LOCAL_VERIFICATION.md` for results, boundaries and frontend steps.
-- [ ] **Online configuration and verification** · deployment owner
-  - Set the API keys, model/effort settings and GitHub token in Coolify; configure the online project's repository and branches, then repeat frontend checks after staging deploy. Local `.env` is not uploaded by Git. Online work is outside the completed local scope.
+- [x] **Staging AI configuration** (AI-7) · Eason
+  - Fresh analysis and review completed after the configuration redeploy at `0cee914`. They used `classroom-chat` and `gpt-6-luna` respectively, with independent keys and an empty legacy shared key.
+- [x] **Staging GitHub access and repository URL** (REPO-4, GH-4, GH-8) · Eason
+  - The live review reads the linked `eason` branch and PR #8. An unchanged repeat reuses its Matches verdict. No token is stored in Git.
+- [x] **Production AI and GitHub configuration** (AI-7, GH-8) · Eason
+  - Explicit review model/key and a read-only GitHub token are configured. The `a18abcc` configuration redeploy succeeded; both services return healthy responses. Production's dedicated acceptance project shows PR #8 as merged and completes class-proxy analysis plus an OpenAI review with commit-pinned evidence.
+- [x] **Targeted real-service acceptance**
+  - Both environments generated fresh analyses and reviews after deployment. Production also verified URL and branch normalization, three code-backed criteria, unchanged-result reuse, a Final report surviving reload, a new draft preserving that Final, and automatic On close analysis with the unfinished story retained. Only dedicated acceptance data was changed; no existing team story was edited.
+  - Invalid-input, no-link, missing-branch, authorization and provider-error cases remain covered by the automated regression suite; this is not a claim that every such case was repeated live.
+- [ ] **Deploy the PR #5 review-cleanup code and finish obsolete-variable removal** · deployment owner
+  - The accepted runtime configuration is live, but this follow-up's code and documentation still require PR approval and deployment to `staging`, then normal promotion to `main`. After each deployment, remove the now-unused empty `OPENAI_API_KEY` rows and repeat health/AI smoke checks. Do not wipe either database; this follow-up has no schema change.
 
 ## 3. Decisions to confirm
 

@@ -8,7 +8,7 @@ from ..schemas.reviews import ReviewDetail, ReviewRead
 from ..services.github_client import GitHubClient, get_github_client
 from ..services.jobs import ACTIVE_STATUSES
 from ..services.llm import ReviewLLM, get_review_llm
-from ..services.sprint_review import Evidence, normalize_evidence, run_review
+from ..services.sprint_review import build_review_detail, run_review
 
 router = APIRouter(prefix="/api", tags=["reviews"])
 
@@ -29,7 +29,7 @@ def start_review(
     if github is None:
         raise HTTPException(status_code=503, detail="GitHub token not configured. Set GITHUB_TOKEN.")
     if llm is None:
-        raise HTTPException(status_code=503, detail="Sprint review isn't configured. Set OPENAI_API_KEY (or REVIEW_LLM_API_KEY) and REVIEW_LLM_MODEL.")
+        raise HTTPException(status_code=503, detail="Sprint review isn't configured. Set REVIEW_LLM_API_KEY and REVIEW_LLM_MODEL.")
     running = db.query(SprintReview).filter(SprintReview.sprint_id == sprint.id, SprintReview.status.in_(ACTIVE_STATUSES)).first()
     if running:
         raise HTTPException(status_code=409, detail="A sprint review is already running for this sprint")
@@ -55,8 +55,4 @@ def get_review(review_id: str, db: Session = Depends(get_db), user: User = Depen
     # Items stay as history, but deleted stories are left out of the UI (X-3).
     story_ids = {item.story_id for item in review.items}
     active = {story_id for (story_id,) in db.query(Story.id).filter(Story.id.in_(story_ids))} if story_ids else set()
-    detail = ReviewDetail.model_validate(review)
-    detail.items = [item for item in detail.items if item.story_id in active]
-    for item in detail.items:
-        item.evidence = [entry.model_dump() for entry in normalize_evidence([Evidence.model_validate(row) for row in item.evidence])]
-    return detail
+    return build_review_detail(review, active)

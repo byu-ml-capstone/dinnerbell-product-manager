@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..database import SessionLocal
 from ..models import Sprint, SprintReview, SprintReviewItem, Story
+from ..schemas.reviews import ReviewDetail
 from . import clock
 from .github_client import GitHubClient, GitHubError
 from .github_links import parse_repo
@@ -354,6 +355,15 @@ def normalize_evidence(evidence: list[Evidence]) -> list[Evidence]:
                 ranges.append(str(start) if end == start else f"{start}-{end}")
         normalized.extend(item.model_copy(update={"lines": span}) for span in ranges or [None])
     return normalized
+
+
+def build_review_detail(review: SprintReview, active_story_ids: set[str]) -> ReviewDetail:
+    """Hide deleted stories and normalize historical evidence for display (X-3)"""
+    detail = ReviewDetail.model_validate(review)
+    detail.items = [item for item in detail.items if item.story_id in active_story_ids]
+    for item in detail.items:
+        item.evidence = [entry.model_dump() for entry in normalize_evidence([Evidence.model_validate(row) for row in item.evidence])]
+    return detail
 
 
 def _no_criteria_note(story: Story, summary: str) -> str:
