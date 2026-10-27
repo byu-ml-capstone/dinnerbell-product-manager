@@ -1,5 +1,5 @@
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from app.database import SessionLocal
 from app.main import app
@@ -70,10 +70,13 @@ def test_prompt_uses_names_and_titles_not_ids(client, other_client):
     blocker = create_story(client, project["id"], "Recipe API", sprint_id=sprint["id"], assignee_id=bob["id"])
     blocked = create_story(client, project["id"], "Recipe UI", sprint_id=sprint["id"], story_points=5)
     ok(client.post(f"/api/stories/{blocker['id']}/blocks/{blocked['id']}", json={}))
-    ok(client.post(f"/api/stories/{blocked['id']}/comments", json={"text": "Waiting on the API"}))
+    comment = ok(client.post(f"/api/stories/{blocked['id']}/comments", json={"text": "Waiting on the API"}))
     ok(client.post(f"/api/sprints/{sprint['id']}/messages", json={"text": "Standup notes"}), 201)
-    run_analysis(client, sprint["id"])
+    analysis = run_analysis(client, sprint["id"])
     system, user = fake.prompts[-1]
+    latest = next(row["latest_comment"] for row in analysis["input_snapshot"]["stories"] if row["title"] == "Recipe UI")
+    assert latest["posted_at"] == comment["created_at"]
+    assert latest["posted_on"] == clock.local_date(datetime.fromisoformat(comment["created_at"])).isoformat()
     assert "Bob Brown" in user and "Recipe API" in user and "Recipe UI" in user
     assert "Waiting on the API" in user and "Standup notes" in user
     assert not re.search(r"\b(user|story|sprint|proj)-[0-9a-f]{10}\b", user)

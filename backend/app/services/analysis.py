@@ -68,7 +68,9 @@ def build_analysis_input(db: Session, sprint: Sprint, additional_context: str) -
                     and story.status in ("in_progress", "blocked")
                 ),
                 "latest_comment": (
-                    {"author": latest_comment.author.name, "text": _cut(latest_comment.text, 300)} if latest_comment else None
+                    {"author": latest_comment.author.name, "text": _cut(latest_comment.text, 300),
+                     "posted_at": latest_comment.created_at.isoformat(),
+                     "posted_on": clock.local_date(latest_comment.created_at).isoformat()} if latest_comment else None
                 ),
             }
         )
@@ -156,6 +158,7 @@ Grounding requirements:
 - For closed sprints, closed_on is the actual local closing date. end_date is only the planned end date. If closed_on is missing, the actual closing date is unknown; do not substitute another date.
 - Do not describe a selected story as in_progress, or assume a Matches code-review verdict means a story was exercised in the deployed UI or should automatically be marked done.
 - Ownership advice must match the recorded assignee: never suggest unassigning an already Unassigned story.
+- A comment's posting date is known only if that comment supplies posted_on/posted_at. Never substitute sprint.today or another record's date. Discussion suggestions are proposals, not evidence that a story has already been moved or scheduled.
 
 Write Markdown with exactly these sections, in this order. Keep your draft to about 250 words so the server's verified facts and recorded checks fit within about 600 words overall. Use compact bullets for long story lists; never omit unfinished stories to meet the word target:
 ## Summary

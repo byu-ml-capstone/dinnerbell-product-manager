@@ -213,6 +213,12 @@ def ground_report(text: str, snapshot: dict) -> str:
     for line in commentary.splitlines():
         normalized = _normal(line)
         for story in snapshot.get("stories", []):
+            comment = story.get("latest_comment") or {}
+            quoted = _normal(comment.get("text") or "")
+            if quoted and quoted in normalized:
+                for date in re.findall(r"\((?:[^()\n]*,\s*)?(\d{4}-\d{2}-\d{2})\)", line):
+                    if date != comment.get("posted_on") and date not in comment["text"]:
+                        issues.append(f"Do not invent the posting date of the quoted comment on {story['title']}; use its posted_on if supplied, otherwise omit the date.")
             if story.get("assignee") == "Unassigned":
                 action = re.search(r"\bunassign\s+(?:(?:the\s+)?story\s+)?" + re.escape(_normal(story["title"])) + r"\b", normalized)
                 if action and not _negated(normalized[:action.start()]):

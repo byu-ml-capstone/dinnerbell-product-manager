@@ -152,6 +152,18 @@ def test_unassign_advice_must_match_recorded_ownership(snapshot):
     assert ground_report(draft(snapshot, **{"Suggested Next Steps": "Discuss whether to unassign Release notes from Avery."}), snapshot)
 
 
+def test_quoted_comment_date_must_come_from_that_comment(snapshot):
+    comment = {"author": "Avery", "text": "The provider configuration is pending."}
+    snapshot["stories"][0]["latest_comment"] = comment
+    text = draft(snapshot, **{"Blockers and Risks": 'Avery said "The provider configuration is pending" (2026-10-26).'})
+    with pytest.raises(GroundingError, match="posting date"):
+        ground_report(text, snapshot)
+    comment["posted_on"] = "2026-10-26"
+    assert ground_report(text, snapshot)
+    with pytest.raises(GroundingError, match="posting date"):
+        ground_report(text.replace("2026-10-26", "2026-10-25"), snapshot)
+
+
 def test_closed_date_must_not_be_replaced_by_planned_end_date(snapshot):
     snapshot["sprint"].update(status="closed", closed_on="2026-10-26", end_date="2026-10-27")
     with pytest.raises(GroundingError, match="actual closing date"):
