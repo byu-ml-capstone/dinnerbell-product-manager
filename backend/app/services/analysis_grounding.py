@@ -211,6 +211,12 @@ def ground_report(text: str, snapshot: dict) -> str:
         if snapshot["grounding"]["progress_baseline"] is None and not _negated(commentary[max(0, match.start() - 60):match.start()]):
             issues.append("No planned-progress baseline is supplied; describe the recorded forecast and dates instead.")
     for line in commentary.splitlines():
+        normalized = _normal(line)
+        for story in snapshot.get("stories", []):
+            if story.get("assignee") == "Unassigned":
+                action = re.search(r"\bunassign\s+(?:(?:the\s+)?story\s+)?" + re.escape(_normal(story["title"])) + r"\b", normalized)
+                if action and not _negated(normalized[:action.start()]):
+                    issues.append(f"{story['title']} is already Unassigned. Do not recommend unassigning it; use the recorded assignee when advising on ownership.")
         scope = re.search(r"scope (?:ambiguity|is (?:ambiguous|unclear))", line, re.I)
         if scope and not _negated(line[:scope.start()]):
             supported = any(_normal(story["title"]) in _normal(line) and (

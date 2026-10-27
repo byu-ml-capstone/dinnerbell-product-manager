@@ -145,6 +145,13 @@ def test_each_unfinished_story_must_remain_visible(snapshot):
         ground_report(draft(snapshot, **{"Remaining Work": "API release demo, Provider setup, Acceptance walkthrough, Fix blocker totals, Offline checks"}), snapshot)
 
 
+def test_unassign_advice_must_match_recorded_ownership(snapshot):
+    with pytest.raises(GroundingError, match="already Unassigned"):
+        ground_report(draft(snapshot, **{"Suggested Next Steps": "Unassign *API release demo* and assign Provider setup to enable blocking resolution."}), snapshot)
+    assert ground_report(draft(snapshot, **{"Suggested Next Steps": "Assign an owner to API release demo. Do not unassign API release demo; it is already Unassigned."}), snapshot)
+    assert ground_report(draft(snapshot, **{"Suggested Next Steps": "Discuss whether to unassign Release notes from Avery."}), snapshot)
+
+
 def test_closed_date_must_not_be_replaced_by_planned_end_date(snapshot):
     snapshot["sprint"].update(status="closed", closed_on="2026-10-26", end_date="2026-10-27")
     with pytest.raises(GroundingError, match="actual closing date"):

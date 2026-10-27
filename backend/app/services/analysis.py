@@ -155,6 +155,7 @@ Grounding requirements:
 - No agreed planned-progress baseline is supplied. You may compare the recorded estimated completion date with end_date, but do not assert falling short of planned progress or invent a planned trajectory.
 - For closed sprints, closed_on is the actual local closing date. end_date is only the planned end date. If closed_on is missing, the actual closing date is unknown; do not substitute another date.
 - Do not describe a selected story as in_progress, or assume a Matches code-review verdict means a story was exercised in the deployed UI or should automatically be marked done.
+- Ownership advice must match the recorded assignee: never suggest unassigning an already Unassigned story.
 
 Write Markdown with exactly these sections, in this order. Keep your draft to about 250 words so the server's verified facts and recorded checks fit within about 600 words overall. Use compact bullets for long story lists; never omit unfinished stories to meet the word target:
 ## Summary
