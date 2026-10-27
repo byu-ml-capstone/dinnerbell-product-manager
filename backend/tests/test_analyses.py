@@ -1,5 +1,5 @@
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from app.database import SessionLocal
 from app.main import app
@@ -38,7 +38,8 @@ def test_analysis_runs_for_an_active_sprint(client):
     create_story(client, project["id"], "Story", sprint_id=sprint["id"], story_points=3)
     analysis = run_analysis(client, sprint["id"], context="Demo on Friday")
     assert analysis["status"] == "complete"
-    assert analysis["ai_content"] == "## Summary\nGood progress."
+    assert analysis["ai_content"].startswith("## Summary\nGood progress.")
+    assert "All story rows, including subtasks: 1 total" in analysis["ai_content"]
     assert analysis["trigger"] == "manual"
     assert analysis["created_by_name"] == "Alice Anders"
     assert analysis["model"] == fake.model
@@ -69,10 +70,13 @@ def test_prompt_uses_names_and_titles_not_ids(client, other_client):
     blocker = create_story(client, project["id"], "Recipe API", sprint_id=sprint["id"], assignee_id=bob["id"])
     blocked = create_story(client, project["id"], "Recipe UI", sprint_id=sprint["id"], story_points=5)
     ok(client.post(f"/api/stories/{blocker['id']}/blocks/{blocked['id']}", json={}))
-    ok(client.post(f"/api/stories/{blocked['id']}/comments", json={"text": "Waiting on the API"}))
+    comment = ok(client.post(f"/api/stories/{blocked['id']}/comments", json={"text": "Waiting on the API"}))
     ok(client.post(f"/api/sprints/{sprint['id']}/messages", json={"text": "Standup notes"}), 201)
-    run_analysis(client, sprint["id"])
+    analysis = run_analysis(client, sprint["id"])
     system, user = fake.prompts[-1]
+    latest = next(row["latest_comment"] for row in analysis["input_snapshot"]["stories"] if row["title"] == "Recipe UI")
+    assert datetime.fromisoformat(latest["posted_at"]) == datetime.fromisoformat(comment["created_at"])
+    assert latest["posted_on"] == clock.local_date(datetime.fromisoformat(comment["created_at"])).isoformat()
     assert "Bob Brown" in user and "Recipe API" in user and "Recipe UI" in user
     assert "Waiting on the API" in user and "Standup notes" in user
     assert not re.search(r"\b(user|story|sprint|proj)-[0-9a-f]{10}\b", user)
@@ -96,6 +100,8 @@ def test_closing_starts_an_analysis_with_metrics_and_unfinished_work(client):
     snapshot = analysis["input_snapshot"]
     assert snapshot["unfinished_stories_left_in_sprint"] == ["Left over"]
     assert snapshot["metrics"]["estimated_completion_date"] == "not enough data"
+    assert snapshot["sprint"]["closed_at"]
+    assert snapshot["sprint"]["closed_on"] == clock.today().isoformat()
     for key in ("committed_points", "completed_points", "remaining_points", "estimated_completion_date"):
         assert key in snapshot["metrics"]
     system, user = fake.prompts[-1]
@@ -131,6 +137,71 @@ def test_failed_call_is_recorded(client):
     assert analysis["status"] == "failed"
     assert "timed out" in analysis["error"]
     assert client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "x"}).status_code == 400
+
+
+def test_repeated_grounding_flags_save_an_editable_draft_with_warnings(client):
+    fake = use_llm(FakeAnalysisLLM(text="## Summary\nThe sprint is falling short of planned progress."))
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    create_story(client, project["id"], "A clear task", sprint_id=sprint["id"], description="Implement the specified endpoint")
+    analysis = run_analysis(client, sprint["id"])
+    assert analysis["status"] == "complete"
+    assert analysis["error"] is None
+    assert analysis["final_content"] is None
+    assert analysis["ai_content"].startswith("**Review needed:")
+    assert "falling short of planned progress" in analysis["ai_content"]
+    assert "baseline" in analysis["ai_content"].split("## Summary")[0]
+    assert analysis["usage"]["grounding"]["warnings"]
+    assert analysis["usage"]["grounding"]["attempts"] == 2
+    assert analysis["usage"]["prompt_tokens"] == 200
+    assert len(fake.prompts) == 2
+    saved = ok(client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "Reviewed and corrected by Alice"}))
+    assert saved["final_content"] == "Reviewed and corrected by Alice"
+    retained = ok(client.get(f"/api/analyses/{analysis['id']}"))
+    assert retained["usage"]["grounding"]["warnings"]
+    assert retained["ai_content"] == analysis["ai_content"]
+
+
+def test_provider_failure_during_correction_still_fails_the_analysis(client):
+    class TimeoutOnCorrection(FakeAnalysisLLM):
+        def complete(self, system, user):
+            if self.prompts:
+                self.error = timeout_error()
+            return super().complete(system, user)
+
+    fake = use_llm(TimeoutOnCorrection(text="## Summary\nThe sprint is behind plan."))
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    analysis = run_analysis(client, sprint["id"])
+    assert len(fake.prompts) == 2
+    assert analysis["status"] == "failed"
+    assert analysis["ai_content"] is None
+    assert "timed out" in analysis["error"]
+
+
+def test_corrected_analysis_keeps_story_fields_and_metric_semantics(client):
+    class CorrectingLLM(FakeAnalysisLLM):
+        def complete(self, system, user):
+            self.text = "## Summary\nThe sprint is falling short of planned progress." if not self.prompts else "## Summary\nUse the recorded facts."
+            return super().complete(system, user)
+
+    fake = use_llm(CorrectingLLM())
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    story = create_story(client, project["id"], "A clear task", sprint_id=sprint["id"],
+                         description="This is high priority but has no assigned estimate", priority="low")
+    before = ok(client.get(f"/api/stories/{story['id']}"))
+    analysis = run_analysis(client, sprint["id"])
+    assert analysis["status"] == "complete"
+    assert len(fake.prompts) == 2
+    assert analysis["usage"]["grounding"]["attempts"] == 2
+    assert analysis["usage"]["grounding"]["warnings"] == []
+    assert analysis["input_snapshot"]["grounding"]["story_counts"]["all_rows"]["unpointed"] == 1
+    assert analysis["metrics"]["unpointed_story_count"] == 0
+    assert "Priority conflict" in analysis["ai_content"]
+    after = ok(client.get(f"/api/stories/{story['id']}"))
+    for field in ("status", "priority", "story_points", "updated_at"):
+        assert after[field] == before[field]
 
 
 def test_not_configured_returns_503(client):
