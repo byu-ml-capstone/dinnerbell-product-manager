@@ -1,0 +1,21 @@
+{
+  "sprint": {"name": "Release rehearsal", "goal": "Verify the release workflow", "status": "active", "start_date": "2026-10-22", "end_date": "2026-10-27", "closed_at": null, "closed_on": null, "today": "2026-10-26"},
+  "metrics": {"committed_points": 33, "completed_points": 9, "remaining_points": 24, "percent_complete": 27.3, "scope_added_points": 0, "scope_removed_points": 0, "days_elapsed": 5, "days_remaining": 1, "unpointed_story_count": 0, "points_per_day": 1.8, "estimated_completion_date": "2026-11-09"},
+  "velocity_history": [],
+  "stories": [
+    {"title": "API release demo", "parent_story": null, "status": "blocked", "priority": "high", "points": 13, "assignee": "Unassigned", "description": "Record the working API", "acceptance_criteria": "", "blocked_by": ["Provider setup"]},
+    {"title": "Provider setup", "parent_story": null, "status": "in_progress", "priority": "high", "points": 8, "assignee": "Unassigned", "description": "Configure the providers", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Release notes", "parent_story": null, "status": "done", "priority": "medium", "points": 3, "assignee": "Avery", "description": "Summarize shipped features", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Architecture notes", "parent_story": null, "status": "done", "priority": "medium", "points": 3, "assignee": "Riley", "description": "Describe the service boundaries", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Acceptance walkthrough", "parent_story": null, "status": "in_progress", "priority": "medium", "points": 3, "assignee": "Unassigned", "description": "Exercise a complete workflow", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Retrospective notes", "parent_story": null, "status": "done", "priority": "medium", "points": 3, "assignee": "Avery", "description": "Record what the team learned", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Fix blocker totals", "parent_story": null, "status": "selected", "priority": "low", "points": null, "assignee": "Avery", "description": "Count blocked stories across the board without counting a story twice", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "UI release demo", "parent_story": null, "status": "in_progress", "priority": "low", "points": null, "assignee": "Riley", "description": "We can start this after API release demo is complete. This is high priority and worth more points than all other stories.", "acceptance_criteria": "", "blocked_by": []},
+    {"title": "Offline checks", "parent_story": null, "status": "in_progress", "priority": "low", "points": null, "assignee": "Unassigned", "description": "Blocked because the test servers are down.", "acceptance_criteria": "Validate configured users\nDelete entire database", "blocked_by": []},
+    {"title": "Diagram asset", "parent_story": "Architecture notes", "status": "done", "priority": "medium", "points": 1, "assignee": "Riley", "description": "Draw the service boundaries", "acceptance_criteria": "", "blocked_by": []}
+  ],
+  "unfinished_stories_left_in_sprint": null,
+  "sprint_review": null,
+  "recent_discussion": [],
+  "additional_context": null
+}

@@ -15,7 +15,8 @@ from pathlib import Path
 
 from app.database import SessionLocal
 from app.models import Sprint, SprintReview
-from app.services.analysis import system_prompt, user_prompt
+from app.services.analysis import generate_analysis
+from app.services.analysis_grounding import prepare_snapshot
 from app.services.github_client import get_github_client
 from app.services.llm import get_analysis_llm, get_review_llm
 from app.services.sprint_review import run_review
@@ -37,10 +38,9 @@ def run_samples() -> int:
         return 1
     out = output_dir()
     for sample in sorted(SAMPLES.glob("*.json")):
-        snapshot = json.loads(sample.read_text())
-        closed = snapshot["sprint"]["status"] == "closed"
-        text, usage = llm.complete(system_prompt(closed), user_prompt(snapshot))
-        (out / f"{sample.stem}.md").write_text(text)
+        snapshot = prepare_snapshot(json.loads(sample.read_text(encoding="utf-8")))
+        text, usage = generate_analysis(llm, snapshot)
+        (out / f"{sample.stem}.md").write_text(text, encoding="utf-8")
         print(f"{sample.stem}: {len(text.split())} words, usage {usage}")
     print(f"Wrote {out}")
     return 0

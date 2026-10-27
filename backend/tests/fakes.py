@@ -15,7 +15,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 class FakeAnalysisLLM:
     model = "fake-analysis-model"
 
-    def __init__(self, text: str = "## Summary\nOn track.", error: Exception | None = None):
+    def __init__(self, text: str = "## Summary\nSprint facts are available.", error: Exception | None = None):
         self.text = text
         self.error = error
         self.prompts: list[tuple[str, str]] = []
@@ -24,7 +24,19 @@ class FakeAnalysisLLM:
         self.prompts.append((system, user))
         if self.error:
             raise self.error
-        return self.text, {"prompt_tokens": 100, "completion_tokens": 50}
+        snapshot = json.loads(re.search(r"```json\n(.*?)\n```", user, re.S)[1])
+        stories = snapshot["stories"]
+        remaining = "Unfinished Work Left in Sprint" if snapshot["sprint"]["status"] == "closed" else "Remaining Work"
+        report = self.text + "\n\n" + "\n\n".join((
+            "## Progress\nSee supplied metrics.",
+            "## Velocity\nSee supplied velocity history.",
+            "## Estimated Completion\nNo forecast for closed sprints; otherwise use the supplied estimate.",
+            "## Accomplished\n" + "\n".join(story["title"] for story in stories if story["status"] == "done"),
+            f"## {remaining}\n" + "\n".join(story["title"] for story in stories if story["status"] != "done"),
+            "## Blockers and Risks\nNo additional risks beyond the supplied checks.",
+            "## Suggested Next Steps\nReview the remaining work with the team.",
+        ))
+        return report, {"prompt_tokens": 100, "completion_tokens": 50}
 
 
 def timeout_error() -> LLMError:
