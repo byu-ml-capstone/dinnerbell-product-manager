@@ -33,7 +33,7 @@ def output_dir() -> Path:
 def run_samples() -> int:
     llm = get_analysis_llm()
     if llm is None:
-        print("Set OPENAI_API_KEY (or ANALYSIS_LLM_API_KEY), ANALYSIS_LLM_BASE_URL and ANALYSIS_LLM_MODEL first.", file=sys.stderr)
+        print("Set ANALYSIS_LLM_API_KEY, ANALYSIS_LLM_BASE_URL and ANALYSIS_LLM_MODEL first.", file=sys.stderr)
         return 1
     out = output_dir()
     for sample in sorted(SAMPLES.glob("*.json")):
@@ -49,7 +49,7 @@ def run_samples() -> int:
 def run_sprint_review(sprint_id: str) -> int:
     llm, github = get_review_llm(), get_github_client()
     if llm is None or github is None:
-        print("Set OPENAI_API_KEY (or REVIEW_LLM_API_KEY), REVIEW_LLM_MODEL and GITHUB_TOKEN first.", file=sys.stderr)
+        print("Set REVIEW_LLM_API_KEY, REVIEW_LLM_MODEL and GITHUB_TOKEN first.", file=sys.stderr)
         return 1
     with SessionLocal() as db:
         sprint = db.get(Sprint, sprint_id)

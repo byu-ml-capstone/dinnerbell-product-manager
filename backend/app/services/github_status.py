@@ -35,7 +35,7 @@ def lookup_status(repo_url: str | None, branch: str | None, github: GitHubClient
         branch_exists = github.get_branch(owner, repo, branch) is not None
     except GitHubError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    pull = max(pulls, key=lambda item: item.get("created_at") or "") if pulls else None
+    pull = pulls[0] if pulls else None
     status = StoryGitHubStatus(
         branch=branch,
         branch_url=branch_url(repo_url, branch),

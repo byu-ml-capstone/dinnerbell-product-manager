@@ -4,6 +4,7 @@ import json
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from openai import OpenAI
 
 from app.config import Settings
@@ -50,48 +51,89 @@ def sdk():
         client.close()
 
 
-def test_default_model_and_output_budgets():
+def test_provider_defaults_are_disabled_and_runtime_budgets_are_shared():
     settings = Settings(_env_file=None)
+    assert settings.analysis_llm_base_url is None
+    assert settings.analysis_llm_model is None
+    assert settings.review_llm_base_url is None
+    assert settings.review_llm_model is None
+    assert settings.analysis_llm_reasoning_effort == "medium"
+    assert settings.review_llm_reasoning_effort == "high"
     assert settings.analysis_llm_max_output_tokens == 4096
     assert settings.review_llm_max_output_tokens == 6000
 
 
-def test_shared_key_configures_both_clients_only_for_openai(monkeypatch):
-    monkeypatch.setattr(llm.settings, "openai_api_key", "shared-test-key")
+@pytest.mark.parametrize("source", ["environment", "dotenv"])
+def test_legacy_shared_key_cannot_enable_either_feature(monkeypatch, tmp_path, source):
+    env_file = None
+    if source == "environment":
+        monkeypatch.setenv("OPENAI_API_KEY", "legacy-test-key")
+    else:
+        env_file = tmp_path / ".env"
+        env_file.write_text("OPENAI_API_KEY=legacy-test-key\n", encoding="utf-8")
+    settings = Settings(_env_file=env_file)
+    monkeypatch.setattr(llm, "settings", settings)
     for area in ("analysis", "review"):
-        monkeypatch.setattr(llm.settings, f"{area}_llm_model", "gpt-6-luna")
-        monkeypatch.setattr(llm.settings, f"{area}_llm_base_url", "https://api.openai.com/v1")
-        monkeypatch.setattr(llm.settings, f"{area}_llm_api_key", "")
-    analysis, review = llm.get_analysis_llm(), llm.get_review_llm()
-    try:
-        assert analysis.model == review.model == "gpt-6-luna"
-        assert analysis.client.api_key == review.client.api_key == "shared-test-key"
-    finally:
-        analysis.client.close()
-        review.client.close()
-    for area in ("analysis", "review"):
-        monkeypatch.setattr(llm.settings, f"{area}_llm_base_url", "https://proxy.example/v1")
+        setattr(settings, f"{area}_llm_model", "gpt-6-luna")
+        setattr(settings, f"{area}_llm_base_url", "https://api.openai.com/v1")
+    assert not hasattr(settings, "openai_api_key")
     assert llm.get_analysis_llm() is None
     assert llm.get_review_llm() is None
-    monkeypatch.setattr(llm.settings, "analysis_llm_api_key", "proxy-test-key")
+
+
+def test_each_feature_requires_its_own_key_and_uses_its_provider(monkeypatch):
+    settings = Settings(_env_file=None, analysis_llm_base_url="https://proxy.example/v1",
+                        analysis_llm_model="classroom-chat", analysis_llm_api_key="proxy-test-key",
+                        analysis_llm_reasoning_effort="none", review_llm_model="gpt-6-luna")
+    monkeypatch.setattr(llm, "settings", settings)
+    assert llm.get_review_llm() is None
     analysis = llm.get_analysis_llm()
     try:
         assert analysis.client.api_key == "proxy-test-key"
+        assert str(analysis.client.base_url) == "https://proxy.example/v1/"
+        assert analysis.model == "classroom-chat"
+        assert analysis.reasoning_effort == "none"
     finally:
         analysis.client.close()
-
-
-def test_independent_key_overrides_shared_key(monkeypatch):
-    monkeypatch.setattr(llm.settings, "openai_api_key", "shared-test-key")
-    monkeypatch.setattr(llm.settings, "review_llm_api_key", "review-test-key")
-    monkeypatch.setattr(llm.settings, "review_llm_model", "gpt-6-luna")
-    monkeypatch.setattr(llm.settings, "review_llm_base_url", "")
+    settings.analysis_llm_api_key = None
+    settings.review_llm_api_key = "review-test-key"
+    assert llm.get_analysis_llm() is None
     review = llm.get_review_llm()
     try:
         assert review.client.api_key == "review-test-key"
         assert str(review.client.base_url) == "https://api.openai.com/v1/"
+        assert review.reasoning_effort == "high"
     finally:
         review.client.close()
+
+
+@pytest.mark.parametrize("area,missing", [("analysis", "base_url"), ("analysis", "model"), ("review", "model")])
+def test_explicit_key_still_requires_feature_configuration(monkeypatch, area, missing):
+    settings = Settings(_env_file=None)
+    for field, value in (("base_url", "https://api.openai.com/v1"), ("model", "gpt-6-luna"), ("api_key", "test-only-key")):
+        setattr(settings, f"{area}_llm_{field}", value)
+    setattr(settings, f"{area}_llm_{missing}", None)
+    monkeypatch.setattr(llm, "settings", settings)
+    assert getattr(llm, f"get_{area}_llm")() is None
+
+
+def test_blank_compose_values_use_backend_defaults(monkeypatch):
+    for area in ("analysis", "review"):
+        for name in ("REASONING_EFFORT", "MAX_OUTPUT_TOKENS"):
+            monkeypatch.setenv(f"{area.upper()}_LLM_{name}", "")
+    settings = Settings(_env_file=None)
+    assert (settings.analysis_llm_reasoning_effort, settings.analysis_llm_max_output_tokens) == ("medium", 4096)
+    assert (settings.review_llm_reasoning_effort, settings.review_llm_max_output_tokens) == ("high", 6000)
+
+
+def test_analysis_configuration_helper_reports_feature_key():
+    with pytest.raises(HTTPException) as captured:
+        llm.require_analysis_llm(None)
+    assert captured.value.status_code == 503
+    assert "ANALYSIS_LLM_API_KEY" in captured.value.detail
+    assert "OPENAI_API_KEY" not in captured.value.detail
+    configured = object()
+    assert llm.require_analysis_llm(configured) is configured
 
 
 def test_analysis_sdk_sends_luna_low_effort_and_completion_limit(sdk):
