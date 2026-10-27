@@ -352,6 +352,22 @@ button.subtask {
   gap: 6px;
 }
 
+.branch-name,
+.branch-label,
+.suggested-branch code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.branch-name {
+  max-width: 100%;
+}
+
+.branch-name svg,
+.pr-status svg {
+  flex-shrink: 0;
+}
+
 code {
   background: #f1f1f1;
   border-radius: 4px;

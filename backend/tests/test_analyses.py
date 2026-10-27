@@ -95,10 +95,12 @@ def test_closing_starts_an_analysis_with_metrics_and_unfinished_work(client):
     assert analysis["created_by_id"] is None
     snapshot = analysis["input_snapshot"]
     assert snapshot["unfinished_stories_left_in_sprint"] == ["Left over"]
+    assert snapshot["metrics"]["estimated_completion_date"] == "not enough data"
     for key in ("committed_points", "completed_points", "remaining_points", "estimated_completion_date"):
         assert key in snapshot["metrics"]
     system, user = fake.prompts[-1]
     assert "## Unfinished Work Left in Sprint" in system
+    assert "For a closed sprint, do not give a completion date estimate" in system
     assert '"completed_points": 5' in user
 
 
@@ -135,6 +137,12 @@ def test_not_configured_returns_503(client):
     project = create_project(client)
     sprint = active_sprint(client, project["id"])
     assert client.post(f"/api/sprints/{sprint['id']}/analyses", json={}).status_code == 503
+
+
+def test_unconfigured_analysis_still_checks_membership(client, other_client):
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    assert other_client.post(f"/api/sprints/{sprint['id']}/analyses", json={}).status_code == 403
 
 
 def test_stale_jobs_are_marked_failed_on_startup(client):

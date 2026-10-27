@@ -12,10 +12,13 @@ export function BranchSection({ story, readOnly }) {
   const [statusError, setStatusError] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setStatus(null);
     setStatusError("");
+    setCopied(false);
+    setError("");
     if (!story.github_branch) return;
     let cancelled = false;
     storiesApi
@@ -30,9 +33,10 @@ export function BranchSection({ story, readOnly }) {
     return () => {
       cancelled = true;
     };
-  }, [story.id, story.github_branch]);
+  }, [story.id, story.github_branch, story.branch_url]);
 
   async function copy() {
+    setError("");
     try {
       await navigator.clipboard.writeText(story.suggested_branch);
       setCopied(true);
@@ -44,11 +48,14 @@ export function BranchSection({ story, readOnly }) {
 
   async function useSuggestion() {
     setError("");
+    setBusy(true);
     try {
       await storiesApi.update(story.id, { github_branch: story.suggested_branch });
       await changed();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -59,11 +66,11 @@ export function BranchSection({ story, readOnly }) {
         <div className="branch-box">
           {story.branch_url ? (
             <a href={story.branch_url} target="_blank" rel="noreferrer" className="branch-name">
-              <GitBranch size={14} /> {story.github_branch} <ExternalLink size={12} />
+              <GitBranch size={14} /> <span className="branch-label">{story.github_branch}</span> <ExternalLink size={12} />
             </a>
           ) : (
             <span className="branch-name">
-              <GitBranch size={14} /> {story.github_branch}
+              <GitBranch size={14} /> <span className="branch-label">{story.github_branch}</span>
             </span>
           )}
           {status?.pull_request && (
@@ -80,18 +87,23 @@ export function BranchSection({ story, readOnly }) {
       ) : (
         <p className="muted">No branch linked.</p>
       )}
-      <div className="suggested-branch">
-        <span className="muted">Suggested</span>
-        <code>{story.suggested_branch}</code>
-        <button className="ghost-button compact" onClick={copy} title="Copy branch name">
-          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
-        </button>
-        {!readOnly && story.github_branch !== story.suggested_branch && (
-          <button className="ghost-button compact" onClick={useSuggestion}>
-            Use this
+      {story.suggested_branch ? (
+        <div className="suggested-branch">
+          <span className="muted">Suggested</span>
+          <code>{story.suggested_branch}</code>
+          <button className="ghost-button compact" onClick={copy} title="Copy branch name">
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy"}
           </button>
-        )}
-      </div>
+          {!readOnly && story.github_branch !== story.suggested_branch && (
+            <button className="ghost-button compact" onClick={useSuggestion} disabled={busy}>
+              Use this
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="muted">Couldn't suggest a branch name from this title. Enter a branch manually using Edit.</p>
+      )}
+      {!readOnly && story.suggested_branch && <p className="muted">Use this saves the name only. Create the branch in Git yourself.</p>}
       <FormError message={error} />
     </section>
   );

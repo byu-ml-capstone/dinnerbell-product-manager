@@ -65,7 +65,8 @@ Question format, before and after filling in:
   - 118 backend tests pass against Postgres, and `alembic check` reports no drift between the models and the migration.
   - `./smoke-test.sh` passes on the Docker stack.
   - Two scripted walkthroughs of the UI pass in headless Chrome.
-  - **Not yet verified:** the AI and GitHub features against the real LiteLLM proxy, Codex model and GitHub API. The credentials aren't configured yet (see `OPEN_ITEMS.md`).
+  - Sprint analysis ran against the real LiteLLM proxy on 2026-10-26, locally and on staging and production.
+  - **Not yet verified:** the sprint review and GitHub features against the real Codex model and GitHub API. Their credentials aren't configured yet (see `OPEN_ITEMS.md`).
 - **Citations:**
   - `D-n` and `C-n` are answered items in `SPRINT_PLANNER_DECISIONS.md`.
   - `A-n` are its "Already agreed" items. They are treated as decisions, but none of them is checked off in that file yet (see `OPEN_ITEMS.md`).
@@ -85,7 +86,7 @@ Question format, before and after filling in:
 | Staging URL | http://dinnerbell-product-manager-staging.ml-capstone.cs.byu.edu (class naming convention from `README.md`; HTTP only, VPN required) |
 | Production URL | http://dinnerbell-product-manager.ml-capstone.cs.byu.edu (same convention) |
 | Base commit | `fc1a359` |
-| Last updated | 2026-10-20 (built on branch `Initial-App`; in review) |
+| Last updated | 2026-10-26 (LiteLLM proxy settings in AI-7; built on branch `Initial-App`, in review) |
 
 | Team member | Role | Areas owned |
 |---|---|---|
@@ -600,9 +601,9 @@ Cross-cutting work that most features depend on.
     | `APP_TIMEZONE` | no | Sets "today" for sprint status and burndown | `America/Denver` |
     | `SESSION_COOKIE_SECURE` | no | Sets the cookie's `Secure` flag (AUTH-3) | `false` |
     | `SEED_DEMO_DATA` | no | Seeds demo data, for local development only | `false` |
-    | `ANALYSIS_LLM_BASE_URL` | no | URL of the class LiteLLM proxy on Coolify (AI-7) | *(empty; see §18)* |
+    | `ANALYSIS_LLM_BASE_URL` | no | URL of the class LiteLLM proxy (AI-7). Coolify has `http://ml-capstone.cs.byu.edu:4000/v1` | *(empty)* |
     | `ANALYSIS_LLM_API_KEY` | yes | LiteLLM key (C-4) | *(empty)* |
-    | `ANALYSIS_LLM_MODEL` | no | Model name on the LiteLLM proxy | *(empty; see §18)* |
+    | `ANALYSIS_LLM_MODEL` | no | Model name on the LiteLLM proxy. Coolify has `classroom-chat` | *(empty)* |
     | `REVIEW_LLM_BASE_URL` | no | Leave empty to call OpenAI directly with our OpenAI token, or set to the LiteLLM URL if it serves the Codex model (AI-7) | *(empty)* |
     | `REVIEW_LLM_API_KEY` | yes | OpenAI token or LiteLLM key for the Codex model | *(empty)* |
     | `REVIEW_LLM_MODEL` | no | Codex model name | *(empty; see §18)* |
@@ -1023,13 +1024,13 @@ The basic rules every other feature builds on.
 
 ## 9. F3: GitHub links
 
-**Goal** (`ARCH_SYNTH.md` decision 3): every sprint and story can point to the GitHub branch, pull request or issue it belongs to, so we always know what each branch is for. The links are also how the AI code review (§10.2) finds the code.
+**Goal** (`ARCH_SYNTH.md` decision 3, narrowed by D-32): each project records one GitHub repository, and each story can optionally name one development branch, so we know what the branch is for. Sprints have no separate links. These branches are also how the AI code review (§10.2) finds the code. PR lookup remains subject to the Proposed decisions below.
 
 **Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
-**Starting point**
+**Starting point (before Initial-App)**
 
-- Nothing exists: sprints and stories have no link fields. The `GitPullRequest` icon in the UI is only used as a "blocked" badge.
+- Before Initial-App, sprints and stories had no link fields and the `GitPullRequest` icon was only a "blocked" badge. Initial-App added the fields, API and UI described below; this section remains in review.
 
 **Questions**
 
@@ -1122,6 +1123,7 @@ The basic rules every other feature builds on.
 
 - Fine-grained tokens for an organization's repo may need an org admin to approve them. We all have admin rights (C-3), but someone has to actually do it (§18).
 - Branch names are free text, so a typo just shows as "Branch not found".
+- Edge behavior confirmed by Eason on 2026-10-23 for this implementation: if a title produces an empty slug, return no suggested branch and ask the user to enter a branch manually. Without a project repository, branch names can still be saved; pasted branch URLs require a repository first so the destination can be checked. This confirmation does not mark the remaining Proposed decisions as team-approved.
 
 ---
 
@@ -1132,6 +1134,8 @@ The basic rules every other feature builds on.
 **Status:** In review (built on `Initial-App`) · **Owner:** Eason
 
 **Naming used in this section:** **Sprint analysis** (§10.1) is the progress report. **Sprint review** (§10.2) is the AI check of linked code against what the sprint claims. The template calls it "code review". Johnny called it "sprint review" in Q&A-7 because it runs per sprint (D-39), so the API, tables and UI use that name.
+
+**Eason implementation override (2026-10-23, user requested):** both features use direct OpenAI `gpt-6-luna` and a shared backend-only `OPENAI_API_KEY`. Analysis uses Chat Completions; review uses Responses with read-only tools and structured verdicts. Separate `ANALYSIS_LLM_*` / `REVIEW_LLM_*` settings remain available for a class proxy. This records the current branch implementation, not a replacement team approval of AI-7 / Q&A-7. The historical decisions and remaining Proposed answers below are preserved. See `AI_SETUP_TESTING.md` for setup and frontend checks.
 
 **Starting point**
 
@@ -1198,7 +1202,7 @@ The basic rules every other feature builds on.
     - **Keys:** class-provided (C-4), plus our own OpenAI token if needed (Q&A-5).
     - **Budget:** none strict (D-37). Usage limits are in REPO-15 and NFR-4.
 
-    The exact proxy URL and model names are still needed (see §18).
+    **Proxy settings (2026-10-26):** the proxy is at `http://ml-capstone.cs.byu.edu:4000/v1`, and sprint analysis uses its `classroom-chat` model. It also offers `classroom-autocomplete` and `classroom-transcribe`. The proxy has a private BYU address, so it's only reachable on the campus network or the BYU VPN. The Codex model name for the sprint review is still needed (see §18).
 - [x] **AI-8** Is it OK to send our project data, comments and source code to an outside AI provider? Are there class rules about this?
   - Decision: Yes. The class provides the keys we'll use (C-4), and D-35 and A-10 have the AI read our code. The repo is private (C-1), so its code only goes to the class-provided LiteLLM and OpenAI endpoints, never anywhere else.
 - [ ] **AI-9** How do we keep it from making things up?
@@ -1305,6 +1309,7 @@ The basic rules every other feature builds on.
 
     `has_tests` can be `true`, `false` or `null`. `no_link` is never returned by the AI; the server sets it for stories with no branch (REPO-16). Reason: verdicts we can check are the whole point of A-10.
 - [ ] **REPO-9** If a story's code hasn't changed since its last review (same commit), do we reuse the old result?
+  - Eason implementation guard (2026-10-24): reuse also requires the same repository and review profile (model, reasoning effort, output limit, endpoint, prompt, tools and verdict schema). A profile hash is stored in the existing `usage` JSON. Historical reviews without a profile are evaluated again. Disjoint evidence line ranges are exposed as separate GitHub links, including in old reports. No schema migration is required. This clarification preserves the Proposed approval status below.
   - Decision: **Proposed:** Yes. If the newest completed review of this story has the same `head_sha` and the same hash of title, acceptance criteria and status, the old item is copied, with `reused_from_item_id` set and no AI call. The UI shows "(unchanged since <date>)". Reason: this saves time and tokens when we review the same sprint again.
 - [ ] **REPO-10** A review could take a minute or more. Does it run in the background, with progress shown?
   - Decision: **Proposed:** Yes. It's the same background pattern as AI-11. `sprint_reviews` has `items_total` and `items_done`, which the UI checks every 3 seconds and shows as "Reviewing 4 of 9 stories…". Only one review can run per sprint at a time; starting another returns 409. Reason: a sprint of 10 stories with tool calls could take several minutes.
@@ -1449,7 +1454,7 @@ Code layout:
 
 **Risks and open questions**
 
-- The exact LiteLLM URL and model names, and whether the Codex model goes through LiteLLM or straight to OpenAI, aren't known yet (§18). The review needs a model that supports tool calls and the Responses API. LiteLLM supports `/v1/responses`, but this should be checked against our proxy.
+- The Codex model name, and whether it goes through LiteLLM or straight to OpenAI, aren't known yet (§18). The proxy only offers `classroom-chat`, `classroom-autocomplete` and `classroom-transcribe` (AI-7). The review needs a model that supports tool calls and the Responses API. LiteLLM supports `/v1/responses`, but this should be checked against our proxy.
 - `BackgroundTasks` jobs run inside the web process. A deploy in the middle of a job kills it, and the stale-job step (AI-11) marks it failed. That's acceptable for four users.
 - GitHub's rate limit (5,000 requests per hour per token) is more than enough for one review, which makes about 30 stories × 15 calls = 450 calls.
 - AI verdicts can still be wrong. REPO-11 keeps them advice only, and the evidence links let us check.
@@ -1953,6 +1958,7 @@ Record decisions that change direction, affect several features, or were hard to
 | 2026-10-20 | VEL-12 | A closed sprint's metrics and burndown are frozen at `closed_at`, with no completion estimate | AI during the build; needs team review | Found in UI testing: carrying stories out after close looked like removed scope and 100% complete |
 | 2026-10-20 | MOVE-9 | Every sprint in the API carries `capacity_warning`, so the sprint header and Planning share one rule | AI during the build; needs team review | MOVE-9 asked for the warning in the sprint header too |
 | 2026-10-20 | §18 | The open items list moves to `OPEN_ITEMS.md`, so there's one list to keep up to date | Johnny | |
+| 2026-10-26 | AI-7 | Sprint analysis uses the class proxy at `http://ml-capstone.cs.byu.edu:4000/v1` with the `classroom-chat` model | Johnny | Set in Coolify for staging and production. The proxy is only reachable on the BYU network or VPN |
 
 ### 17.2 Clarifying questions asked while drafting
 
@@ -1974,7 +1980,7 @@ Asked by the AI and answered by Johnny on 2026-10-20 while filling in this spec 
 2. The repo-reading feature in §10.2 is called **sprint review**, because it runs per sprint (D-39), and it uses a **Codex model**.
 3. "We have openai access tokens if needed" means the Codex model can be called directly at OpenAI if LiteLLM doesn't serve it. The backend therefore has separate settings: `ANALYSIS_LLM_*` and `REVIEW_LLM_*` (OPS-3).
 
-The proxy URL and model names are still open (see `OPEN_ITEMS.md`).
+The proxy URL and the analysis model were filled in on 2026-10-26 (AI-7). The Codex model name for the sprint review is still open (see `OPEN_ITEMS.md`).
 
 **Answer to D-18's question** ("what are the current ci tests checking?"):
 
