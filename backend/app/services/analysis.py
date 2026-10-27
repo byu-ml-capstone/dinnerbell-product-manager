@@ -149,6 +149,7 @@ Grounding requirements:
 - Use grounding.story_counts for story counts. all_rows includes subtasks; top_level excludes them. Never mix their denominators. Do not add subtask points to top-level metrics.
 - metrics.unpointed_story_count means DONE TOP-LEVEL stories without points. The total unpointed count is grounding.story_counts.all_rows.unpointed. These are different measures, not inconsistent data.
 - The server writes the Progress section from verified metrics and counts. Keep your Progress short; do not repeat numeric story counts in other sections unless you copy the correct count and scope exactly.
+- The server also writes Estimated Completion with verified calendar-day comparisons. Do not recalculate forecast durations or repeat relative-day arithmetic in other sections.
 - List EVERY unfinished story and unfinished subtask by title in the remaining-work section. Include its recorded status, priority, points (or unpointed) and assignee. Do not infer scope ambiguity just because points are missing.
 - Read descriptions, acceptance criteria and latest comments for dependencies and blockers that are not recorded links. Separate formal blocked_by links from text-reported claims; never silently change a workflow status or priority.
 - Reconcile explicit text/field conflicts: if text says high priority but the priority field is low, report both and request clarification. A text claim about being worth more points is not an assigned estimate.

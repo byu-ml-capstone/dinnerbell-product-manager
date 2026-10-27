@@ -2,6 +2,7 @@
 
 import copy
 import re
+from datetime import date
 
 STATUSES = ("backlog", "selected", "in_progress", "blocked", "done")
 HEADINGS = ("Summary", "Progress", "Velocity", "Estimated Completion", "Accomplished",
@@ -140,6 +141,24 @@ def _progress(snapshot: dict) -> str:
     return "\n".join(lines)
 
 
+def _estimated_completion(snapshot: dict) -> str:
+    sprint = snapshot["sprint"]
+    if sprint["status"] == "closed":
+        return "The sprint is closed" + (f" (actual closing date: {sprint['closed_on']})" if sprint.get("closed_on") else "; actual closing date is unknown") + ". No completion forecast applies."
+    estimate = snapshot["metrics"].get("estimated_completion_date")
+    try:
+        forecast = date.fromisoformat(estimate)
+    except (TypeError, ValueError):
+        return "Estimated completion: not enough data."
+    lines = [f"Estimated completion: {forecast.isoformat()} (an estimate, not a guarantee)."]
+    for key, label in (("today", "the snapshot date"), ("end_date", "the planned end date")):
+        reference = date.fromisoformat(sprint[key])
+        days = (forecast - reference).days
+        comparison = f"{abs(days)} calendar days {'after' if days >= 0 else 'before'}"
+        lines.append(f"- {comparison} {label} ({reference.isoformat()}).")
+    return "\n".join(lines)
+
+
 def _number(value: str) -> int:
     return int(value) if value.isdigit() else WORDS[value]
 
@@ -246,6 +265,7 @@ def ground_report(text: str, snapshot: dict) -> str:
     if issues:
         raise GroundingError("\n".join(dict.fromkeys(issues)))
     sections["Progress"] = _progress(snapshot)
+    sections["Estimated Completion"] = _estimated_completion(snapshot)
     if notes:
         sections["Blockers and Risks"] = "Recorded checks (text claims are not workflow changes):\n" + _recorded_checks(notes) + "\n\n" + sections["Blockers and Risks"]
     return "\n\n".join(f"## {heading}\n{sections[heading]}" for heading in expected)

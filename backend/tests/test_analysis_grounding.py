@@ -177,6 +177,14 @@ def test_closed_sprints_cannot_receive_a_future_completion_forecast(snapshot):
         ground_report(draft(snapshot, **{"Estimated Completion": "The sprint will complete on 2026-11-09."}), snapshot)
 
 
+def test_forecast_calendar_days_are_rendered_from_snapshot_dates(snapshot):
+    report = ground_report(draft(snapshot, **{"Estimated Completion": "2026-11-09 is 13 days from today."}), snapshot)
+    estimate = report.split("## Estimated Completion")[1].split("## Accomplished")[0]
+    assert "14 calendar days after the snapshot date (2026-10-26)" in estimate
+    assert "13 calendar days after the planned end date (2026-10-27)" in estimate
+    assert "13 days from today" not in estimate
+
+
 def test_count_corrections_and_baseline_caveats_are_not_false_positives(snapshot):
     text = "Do not claim two unpointed stories. There are three unpointed stories. Do not say the sprint is behind plan."
     assert ground_report(draft(snapshot, Summary=text), snapshot)

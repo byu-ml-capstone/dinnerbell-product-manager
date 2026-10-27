@@ -75,7 +75,7 @@ def test_prompt_uses_names_and_titles_not_ids(client, other_client):
     analysis = run_analysis(client, sprint["id"])
     system, user = fake.prompts[-1]
     latest = next(row["latest_comment"] for row in analysis["input_snapshot"]["stories"] if row["title"] == "Recipe UI")
-    assert latest["posted_at"] == comment["created_at"]
+    assert datetime.fromisoformat(latest["posted_at"]) == datetime.fromisoformat(comment["created_at"])
     assert latest["posted_on"] == clock.local_date(datetime.fromisoformat(comment["created_at"])).isoformat()
     assert "Bob Brown" in user and "Recipe API" in user and "Recipe UI" in user
     assert "Waiting on the API" in user and "Standup notes" in user
