@@ -15,8 +15,11 @@ BLOCKER = re.compile(
     r"|\bservers? (?:are |is )?down\b|\b(?:we|i) (?:cannot|can't) start\b", re.I,
 )
 DESTRUCTIVE = re.compile(
-    r"\b(?:delete|drop|wipe|truncate|erase|purge|destroy)\b[^\n.!?]{0,80}\b(?:database|schema|tables?|all data)\b"
-    r"|\b(?:database|db)\s+(?:deletion|delete)\b", re.I,
+    r"\b(?:delete|drop|wipe|truncate|erase|purge|destroy)\s+"
+    r"(?:(?:the|our|a)\s+)?(?:(?:entire|whole|full|complete)\s+)?"
+    r"(?:(?:production|staging|test)\s+)?(?:database|db)\b"
+    r"(?!\s+(?:rows?|records?|entries|entry|tables?|schemas?|fields?)\b)"
+    r"|\b(?:entire|whole)\s+(?:database|db)\s+(?:deletion|removal|wipe)\b", re.I,
 )
 CAUTION = re.compile(r"\b(?:risk\w*|destruct\w*|unsafe|approval|backup|clarif\w*|avoid|never|do not|don't|human review|manual review)\b", re.I)
 WORDS = {word: i for i, word in enumerate(
@@ -193,7 +196,8 @@ def _count_issues(text: str, snapshot: dict) -> list[str]:
                 continue
             scope = "top_level" if match["scope"] else "all_rows"
             if _number(match["n"]) != counts[scope][key]:
-                issues.append(f"Incorrect {key} count; use grounding.story_counts.{scope}.{key}.")
+                label = "top-level stories" if scope == "top_level" else "all story rows, including subtasks"
+                issues.append(f"Incorrect {key.replace('_', ' ')} count: expected {counts[scope][key]} for {label}.")
     ratio = rf"\b(?P<done>{NUMBER})\s*(?:of|out of|/)\s*(?P<total>{NUMBER})\s+(?:stories|tasks)\s+(?:are\s+)?(?:marked\s+)?(?:done|complete)\b"
     allowed = {(value["by_status"]["done"], value["total"]) for value in counts.values()}
     for match in re.finditer(ratio, text):
@@ -204,8 +208,7 @@ def _count_issues(text: str, snapshot: dict) -> list[str]:
     return issues
 
 
-def ground_report(text: str, snapshot: dict) -> str:
-    """Check model commentary, render trusted counts, and include source-backed observations"""
+def _sections(text: str, snapshot: dict) -> tuple[list[str], dict[str, str]]:
     closed = snapshot["sprint"]["status"] == "closed"
     expected = list(HEADINGS)
     if closed:
@@ -215,6 +218,40 @@ def ground_report(text: str, snapshot: dict) -> str:
         raise GroundingError("Return the eight required section headings exactly once, in order.")
     sections = {match[1]: text[match.end():matches[i + 1].start() if i + 1 < len(matches) else len(text)].strip()
                 for i, match in enumerate(matches)}
+    return expected, sections
+
+
+def _render_report(expected: list[str], sections: dict[str, str], snapshot: dict) -> str:
+    sections["Progress"] = _progress(snapshot)
+    sections["Estimated Completion"] = _estimated_completion(snapshot)
+    notes = snapshot["grounding"]["required_observations"]
+    if notes:
+        sections["Blockers and Risks"] = "Recorded checks (text claims are not workflow changes):\n" + _recorded_checks(notes) + "\n\n" + sections["Blockers and Risks"]
+    return "\n\n".join(f"## {heading}\n{sections[heading]}" for heading in expected)
+
+
+def flagged_report(text: str, snapshot: dict, warnings: list[str]) -> str:
+    """Keep a usable draft with advisory flags, including when its headings are malformed"""
+    notice = "**Review needed: draft checks still flagged issues after one correction.**\n\n"
+    notice += "These checks can be wrong. Compare the draft with the supplied data and edit it before saving a final report.\n\n"
+    notice += "\n".join("- " + _markdown(warning) for warning in warnings)
+    try:
+        expected, sections = _sections(text, snapshot)
+        body = _render_report(expected, sections, snapshot)
+    except GroundingError:
+        # Preserve the provider's nonempty text when its structure cannot be safely parsed
+        body = "**Verified sprint facts**\n\n" + _progress(snapshot) + "\n\n" + _estimated_completion(snapshot)
+        notes = snapshot["grounding"]["required_observations"]
+        if notes:
+            body += "\n\n**Recorded checks**\n\n" + _recorded_checks(notes)
+        body += "\n\n**AI draft (original structure retained)**\n\n" + text
+    return notice + "\n\n" + body
+
+
+def ground_report(text: str, snapshot: dict) -> str:
+    """Check a draft for a possible correction, then render server facts and observations"""
+    closed = snapshot["sprint"]["status"] == "closed"
+    expected, sections = _sections(text, snapshot)
     commentary = "\n".join(body for heading, body in sections.items() if heading != "Progress")
     issues = _count_issues(commentary, snapshot)
     remaining = _normal(sections[expected[5]])
@@ -224,7 +261,7 @@ def ground_report(text: str, snapshot: dict) -> str:
         issues.append("List every unfinished story, including unfinished subtasks, under the remaining-work heading: " + ", ".join(missing))
     notes = snapshot["grounding"]["required_observations"]
     if notes and re.search(r"\bno (?:blockers|risks|dependencies)(?: or (?:blockers|risks))?\b", sections["Blockers and Risks"], re.I):
-        issues.append("Do not claim there are no blockers/risks when required_observations contains recorded checks.")
+        issues.append("The draft says there are no blockers/risks despite recorded dependencies or flagged source text.")
     unsupported = re.compile(r"fall(?:ing|s)? short of (?:the )?planned progress|(?:behind|ahead of) (?:the )?(?:plan|planned progress)\b", re.I)
     for match in unsupported.finditer(commentary):
         if snapshot["grounding"]["progress_baseline"] is None and not _negated(commentary[max(0, match.start() - 60):match.start()]):
@@ -264,8 +301,4 @@ def ground_report(text: str, snapshot: dict) -> str:
                 issues.append("Use sprint.closed_on for the actual closing date; never substitute end_date. If unknown, omit the date.")
     if issues:
         raise GroundingError("\n".join(dict.fromkeys(issues)))
-    sections["Progress"] = _progress(snapshot)
-    sections["Estimated Completion"] = _estimated_completion(snapshot)
-    if notes:
-        sections["Blockers and Risks"] = "Recorded checks (text claims are not workflow changes):\n" + _recorded_checks(notes) + "\n\n" + sections["Blockers and Risks"]
-    return "\n\n".join(f"## {heading}\n{sections[heading]}" for heading in expected)
+    return _render_report(expected, sections, snapshot)

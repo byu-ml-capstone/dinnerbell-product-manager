@@ -139,19 +139,44 @@ def test_failed_call_is_recorded(client):
     assert client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "x"}).status_code == 400
 
 
-def test_grounding_failure_is_recorded_and_unsafe_draft_is_not_saved(client):
+def test_repeated_grounding_flags_save_an_editable_draft_with_warnings(client):
     fake = use_llm(FakeAnalysisLLM(text="## Summary\nThe sprint is falling short of planned progress."))
     project = create_project(client)
     sprint = active_sprint(client, project["id"])
     create_story(client, project["id"], "A clear task", sprint_id=sprint["id"], description="Implement the specified endpoint")
     analysis = run_analysis(client, sprint["id"])
-    assert analysis["status"] == "failed"
-    assert analysis["ai_content"] is None
-    assert "grounding checks" in analysis["error"]
+    assert analysis["status"] == "complete"
+    assert analysis["error"] is None
+    assert analysis["final_content"] is None
+    assert analysis["ai_content"].startswith("**Review needed:")
+    assert "falling short of planned progress" in analysis["ai_content"]
+    assert "baseline" in analysis["ai_content"].split("## Summary")[0]
+    assert analysis["usage"]["grounding"]["warnings"]
     assert analysis["usage"]["grounding"]["attempts"] == 2
     assert analysis["usage"]["prompt_tokens"] == 200
     assert len(fake.prompts) == 2
-    assert client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "x"}).status_code == 400
+    saved = ok(client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "Reviewed and corrected by Alice"}))
+    assert saved["final_content"] == "Reviewed and corrected by Alice"
+    retained = ok(client.get(f"/api/analyses/{analysis['id']}"))
+    assert retained["usage"]["grounding"]["warnings"]
+    assert retained["ai_content"] == analysis["ai_content"]
+
+
+def test_provider_failure_during_correction_still_fails_the_analysis(client):
+    class TimeoutOnCorrection(FakeAnalysisLLM):
+        def complete(self, system, user):
+            if self.prompts:
+                self.error = timeout_error()
+            return super().complete(system, user)
+
+    fake = use_llm(TimeoutOnCorrection(text="## Summary\nThe sprint is behind plan."))
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    analysis = run_analysis(client, sprint["id"])
+    assert len(fake.prompts) == 2
+    assert analysis["status"] == "failed"
+    assert analysis["ai_content"] is None
+    assert "timed out" in analysis["error"]
 
 
 def test_corrected_analysis_keeps_story_fields_and_metric_semantics(client):
@@ -170,6 +195,7 @@ def test_corrected_analysis_keeps_story_fields_and_metric_semantics(client):
     assert analysis["status"] == "complete"
     assert len(fake.prompts) == 2
     assert analysis["usage"]["grounding"]["attempts"] == 2
+    assert analysis["usage"]["grounding"]["warnings"] == []
     assert analysis["input_snapshot"]["grounding"]["story_counts"]["all_rows"]["unpointed"] == 1
     assert analysis["metrics"]["unpointed_story_count"] == 0
     assert "Priority conflict" in analysis["ai_content"]

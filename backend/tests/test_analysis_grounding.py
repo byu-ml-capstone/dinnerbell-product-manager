@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.services.analysis import AnalysisGroundingError, generate_analysis
+from app.services.analysis import generate_analysis
 from app.services.analysis_grounding import GroundingError, ground_report, prepare_snapshot
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sprints" / "grounding_conflicts.json"
@@ -206,12 +206,63 @@ def test_one_correction_is_bounded_and_usage_is_aggregated(snapshot):
     assert usage["completion_tokens"] == 40
     assert usage["prompt_tokens_details"]["cached_tokens"] == 10
     assert usage["grounding"]["attempts"] == 2
+    assert usage["grounding"]["warnings"] == []
 
 
-def test_repeated_grounding_failure_is_not_returned_as_a_successful_draft(snapshot):
+def test_repeated_flags_preserve_the_draft_with_visible_warnings(snapshot):
     bad = draft(snapshot, Summary="Two unpointed stories remain.")
     fake = ScriptedAnalysis([bad, bad])
-    with pytest.raises(AnalysisGroundingError) as captured:
-        generate_analysis(fake, snapshot)
+    text, usage = generate_analysis(fake, snapshot)
     assert len(fake.prompts) == 2
-    assert captured.value.usage["grounding"]["attempts"] == 2
+    assert text.startswith("**Review needed:")
+    assert text.index("Incorrect unpointed count") < text.index("## Summary")
+    assert "Two unpointed stories remain." in text
+    assert "Unpointed stories, including subtasks: 3" in text
+    assert usage["grounding"]["attempts"] == 2
+    assert len(usage["grounding"]["warnings"]) == 1
+    assert usage["prompt_tokens"] == 200
+
+
+@pytest.mark.parametrize("text", [
+    "Finish soft delete for the projects table.",
+    "Add a drop-down filter to the planning table.",
+    "Delete a sprint and its stories from the sprints table, restorable from Trash.",
+    "Delete database records that were selected by the user.",
+])
+def test_ordinary_delete_and_drop_down_work_is_not_destructive(snapshot, text):
+    story = copy.deepcopy(snapshot["stories"][0])
+    story.update(description=text, acceptance_criteria=text, latest_comment=None)
+    prepared = prepare_snapshot({**snapshot, "stories": [story]})
+    assert not any(note["kind"] == "destructive_request" for note in prepared["grounding"]["required_observations"])
+    fake = ScriptedAnalysis([draft(snapshot, **{"Suggested Next Steps": text})])
+    report, usage = generate_analysis(fake, snapshot)
+    assert text in report
+    assert len(fake.prompts) == 1
+    assert usage["grounding"]["warnings"] == []
+
+
+@pytest.mark.parametrize("text", [
+    "Delete entire database", "Drop the whole database", "DROP DATABASE sample",
+    "Wipe our production database", "Entire database deletion is required",
+])
+def test_explicit_whole_database_operations_remain_flagged(snapshot, text):
+    snapshot["stories"][0]["acceptance_criteria"] = text
+    prepared = prepare_snapshot(snapshot)
+    assert any(note["kind"] == "destructive_request" and note["story"] == snapshot["stories"][0]["title"]
+               for note in prepared["grounding"]["required_observations"])
+    bad = draft(prepared, **{"Suggested Next Steps": text})
+    report, usage = generate_analysis(ScriptedAnalysis([bad, bad]), prepared)
+    assert report.startswith("**Review needed:")
+    assert any("destructive" in warning for warning in usage["grounding"]["warnings"])
+    assert "explicit team approval and a recovery plan" in report
+    assert text in report
+
+
+def test_malformed_second_draft_is_preserved_with_verified_facts(snapshot):
+    text, usage = generate_analysis(ScriptedAnalysis(["First draft without sections", "Second draft without sections"]), snapshot)
+    assert text.startswith("**Review needed:")
+    assert "eight required section headings" in text
+    assert "Second draft without sections" in text
+    assert "10 total; 4 done; 5 in progress or blocked" in text
+    assert "Delete entire database" in text and "explicit team approval" in text
+    assert usage["grounding"]["warnings"]
