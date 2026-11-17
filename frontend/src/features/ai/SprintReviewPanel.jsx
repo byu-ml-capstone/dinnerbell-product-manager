@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, ExternalLink, ScanSearch } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Download, ExternalLink, ScanSearch } from "lucide-react";
 import { reviewsApi } from "../../api/reviews";
 import { useAsync } from "../../api/useAsync";
 import { FormError } from "../../components/ErrorBanner";
@@ -9,6 +9,7 @@ import { STATUS_LABELS } from "../../constants";
 import { formatDateTime } from "../../format";
 import { useWorkspace } from "../../workspace";
 import { usePolling } from "./usePolling";
+import { downloadMarkdown, reportFilename, reviewMarkdown } from "./reportDownloads";
 
 const RUNNING = ["pending", "running"];
 const NONE = [];
@@ -81,7 +82,7 @@ export function SprintReviewPanel({ sprint }) {
       </p>
       <FormError message={error || list.error} />
       {selectedId ? (
-        <ReviewDetail id={selectedId} repoUrl={project.github_repo_url} listStatus={reviews.find((item) => item.id === selectedId)?.status} itemsDone={reviews.find((item) => item.id === selectedId)?.items_done} />
+        <ReviewDetail id={selectedId} sprintName={sprint.name} repoUrl={project.github_repo_url} listStatus={reviews.find((item) => item.id === selectedId)?.status} itemsDone={reviews.find((item) => item.id === selectedId)?.items_done} />
       ) : (
         list.data && <p className="muted">No sprint reviews yet.</p>
       )}
@@ -89,7 +90,7 @@ export function SprintReviewPanel({ sprint }) {
   );
 }
 
-function ReviewDetail({ id, repoUrl, listStatus, itemsDone }) {
+function ReviewDetail({ id, sprintName, repoUrl, listStatus, itemsDone }) {
   const detail = useAsync(() => reviewsApi.get(id), [id, listStatus, itemsDone]);
   const [open, setOpen] = useState({});
   const review = detail.data?.id === id ? detail.data : null;
@@ -107,7 +108,14 @@ function ReviewDetail({ id, repoUrl, listStatus, itemsDone }) {
 
   return (
     <div className="review-detail">
-      <p className="muted">{review.model}</p>
+      <div className="section-heading">
+        <p className="muted">{review.model}</p>
+        {review.status === "complete" && (
+          <button className="secondary-button" onClick={() => downloadMarkdown(reviewMarkdown(review, repoUrl), reportFilename("sprint-review", sprintName, id))}>
+            <Download size={16} /> Download .md
+          </button>
+        )}
+      </div>
       {RUNNING.includes(review.status) && (
         <div className="progress">
           <Spinner label={`Reviewing ${review.items_done} of ${review.items_total || "?"} stories…`} />

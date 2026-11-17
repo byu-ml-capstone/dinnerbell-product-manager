@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 class AnalysisCreate(BaseModel):
     additional_context: str = Field(default="", max_length=5000)
+    next_sprint_goals: str = Field(default="", max_length=2000)
+    faculty_feedback: str = Field(default="", max_length=2000)
 
 
 class AnalysisSave(BaseModel):
@@ -35,3 +37,4 @@ class AnalysisDetail(AnalysisRead):
     input_snapshot: dict
     metrics: dict
     usage: dict | None
+    faculty_report: dict | None = None

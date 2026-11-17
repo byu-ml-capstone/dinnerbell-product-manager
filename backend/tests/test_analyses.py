@@ -169,3 +169,35 @@ def test_analyses_check_membership(client, other_client):
     assert other_client.get(f"/api/sprints/{sprint['id']}/analyses").status_code == 403
     assert other_client.get(f"/api/analyses/{analysis['id']}").status_code == 403
     assert other_client.put(f"/api/analyses/{analysis['id']}", json={"final_content": "x"}).status_code == 403
+    assert other_client.get(f"/api/analyses/{analysis['id']}/sprint-report.pptx").status_code == 403
+
+
+def test_faculty_report_generated_with_analysis_and_optional_team_inputs(client):
+    use_llm(FakeAnalysisLLM())
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    created = ok(client.post(f"/api/sprints/{sprint['id']}/analyses", json={
+        "next_sprint_goals": "Run the pilot", "faculty_feedback": "Review the evaluation plan",
+    }), 202)
+    analysis = ok(client.get(f"/api/analyses/{created['id']}"))
+    report = analysis["faculty_report"]
+    assert len(report["sections"]) == 6
+    assert report["team"] == project["name"]
+    assert report["sections"][4]["content"] == "Run the pilot"
+    assert report["sections"][5]["content"] == "Review the evaluation plan"
+    response = client.get(f"/api/analyses/{created['id']}/sprint-report.pptx")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    assert response.headers["content-disposition"].endswith('.pptx"')
+    from io import BytesIO
+    from pptx import Presentation
+    assert len(Presentation(BytesIO(response.content)).slides) == 1
+
+
+def test_failed_analysis_has_no_faculty_report_or_pptx(client):
+    use_llm(FakeAnalysisLLM(error=timeout_error()))
+    project = create_project(client)
+    sprint = active_sprint(client, project["id"])
+    analysis = run_analysis(client, sprint["id"])
+    assert analysis["faculty_report"] is None
+    assert client.get(f"/api/analyses/{analysis['id']}/sprint-report.pptx").status_code == 400

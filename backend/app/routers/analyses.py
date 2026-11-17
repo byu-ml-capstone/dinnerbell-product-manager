@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
@@ -7,6 +8,7 @@ from ..models import Sprint, SprintAnalysis, User
 from ..schemas.analyses import AnalysisCreate, AnalysisDetail, AnalysisRead, AnalysisSave
 from ..services import clock
 from ..services.analysis import build_analysis_input, run_analysis
+from ..services.faculty_report import build_faculty_report, render_pptx
 from ..services.llm import AnalysisLLM, get_analysis_llm, require_analysis_llm
 
 router = APIRouter(prefix="/api", tags=["analyses"])
@@ -40,6 +42,10 @@ def create_analysis(
     sprint = get_sprint_for_member(db, sprint_id, user)
     llm = require_analysis_llm(llm)
     snapshot, metrics = build_analysis_input(db, sprint, payload.additional_context.strip())
+    snapshot["report_context"] = {
+        "next_sprint_goals": payload.next_sprint_goals.strip(),
+        "faculty_feedback": payload.faculty_feedback.strip(),
+    }
     analysis = SprintAnalysis(
         sprint_id=sprint.id,
         trigger="manual",
@@ -78,6 +84,29 @@ def get_analysis(analysis_id: str, db: Session = Depends(get_db), user: User = D
         input_snapshot=analysis.input_snapshot or {},
         metrics=analysis.metrics or {},
         usage=analysis.usage,
+        faculty_report=_faculty_report(analysis) if analysis.status == "complete" else None,
+    )
+
+
+def _faculty_report(analysis: SprintAnalysis) -> dict:
+    snapshot = dict(analysis.input_snapshot or {})
+    if not analysis.final_content:
+        snapshot["report_warnings"] = ((analysis.usage or {}).get("grounding") or {}).get("warnings", [])
+    return build_faculty_report(
+        snapshot, analysis.final_content or analysis.ai_content or "",
+        clock.local_date(analysis.created_at).isoformat(),
+    )
+
+
+@router.get("/analyses/{analysis_id}/sprint-report.pptx")
+def download_sprint_report(analysis_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
+    analysis = _analysis_for_member(db, analysis_id, user)
+    if analysis.status != "complete":
+        raise HTTPException(status_code=400, detail="Only a completed analysis has a sprint report")
+    return Response(
+        render_pptx(_faculty_report(analysis)),
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        headers={"Content-Disposition": f'attachment; filename="sprint-report-{analysis.id}.pptx"'},
     )
 
 
