@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, RotateCcw, Save } from "lucide-react";
+import { Bot, Download, RotateCcw, Save } from "lucide-react";
 import { analysesApi } from "../../api/analyses";
 import { useAsync } from "../../api/useAsync";
 import { FormError } from "../../components/ErrorBanner";
@@ -8,6 +8,8 @@ import { Spinner } from "../../components/Spinner";
 import { formatDateTime } from "../../format";
 import { useWorkspace } from "../../workspace";
 import { usePolling } from "./usePolling";
+import { FacultyReportPanel } from "./FacultyReportPanel";
+import { downloadMarkdown, reportFilename } from "./reportDownloads";
 
 const RUNNING = ["pending", "running"];
 const NONE = [];
@@ -17,6 +19,8 @@ export function AnalysisPanel({ sprint }) {
   const list = useAsync(() => analysesApi.list(sprint.id), [sprint.id, version]);
   const [selectedId, setSelectedId] = useState(null);
   const [context, setContext] = useState("");
+  const [nextGoals, setNextGoals] = useState("");
+  const [facultyFeedback, setFacultyFeedback] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -32,8 +36,10 @@ export function AnalysisPanel({ sprint }) {
     setBusy(true);
     setError("");
     try {
-      const created = await analysesApi.create(sprint.id, context);
+      const created = await analysesApi.create(sprint.id, context, { next_sprint_goals: nextGoals, faculty_feedback: facultyFeedback });
       setContext("");
+      setNextGoals("");
+      setFacultyFeedback("");
       await list.reload();
       setSelectedId(created.id);
     } catch (err) {
@@ -54,6 +60,17 @@ export function AnalysisPanel({ sprint }) {
             placeholder="Team interruptions, stakeholder notes, risks, or lessons learned"
           />
         </label>
+        <details className="report-context">
+          <summary>Sprint report details (optional)</summary>
+          <label className="field">
+            <span>Next sprint goals / Semester 2 priorities</span>
+            <textarea value={nextGoals} onChange={(event) => setNextGoals(event.target.value)} maxLength={2000} placeholder="Agreed goals; otherwise the report uses the next recorded sprint goal." />
+          </label>
+          <label className="field">
+            <span>Faculty feedback / requests</span>
+            <textarea value={facultyFeedback} onChange={(event) => setFacultyFeedback(event.target.value)} maxLength={2000} placeholder="Recorded feedback or questions for faculty. Missing feedback will be explicitly noted." />
+          </label>
+        </details>
         <button onClick={run} disabled={busy}>
           <Bot size={16} /> Run analysis
         </button>
@@ -108,6 +125,7 @@ function AnalysisDetail({ id, onRetry, onSaved, listStatus }) {
   }
 
   return (
+    <div className="report-detail-stack">
     <div className="panel report-editor">
       <div className="section-heading">
         <strong>
@@ -143,6 +161,9 @@ function AnalysisDetail({ id, onRetry, onSaved, listStatus }) {
           <>
             <MarkdownText text={content} />
             <div className="button-row">
+              <button className="secondary-button" onClick={() => downloadMarkdown(content, reportFilename("analysis", data.input_snapshot?.sprint?.name, id))}>
+                <Download size={16} /> Download .md
+              </button>
               <button className="secondary-button" onClick={() => setEditing(true)}>
                 Edit and save as final
               </button>
@@ -154,6 +175,8 @@ function AnalysisDetail({ id, onRetry, onSaved, listStatus }) {
         <summary>Data sent to the AI</summary>
         <pre>{JSON.stringify(data.input_snapshot, null, 2)}</pre>
       </details>
+    </div>
+    {data.status === "complete" && <FacultyReportPanel key={id} report={data.faculty_report} analysisId={id} />}
     </div>
   );
 }

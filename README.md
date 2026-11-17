@@ -80,6 +80,7 @@ Start with `docker compose ps`. All three services, `db`, `backend` and `fronten
 - **GitHub links.** Each project records its repo URL, and each story records a branch. The story drawer shows the suggested branch name and the live PR status.
 - **AI.** Sprint analysis uses the class LiteLLM proxy (`classroom-chat`); sprint review uses OpenAI `gpt-6-luna` through Responses with read-only GitHub tools (AI-7). Each feature requires its own backend key and an explicit model. Reports and review verdicts are advice and never change stories.
 - **Discussion.** Each sprint has its own board, with one level of replies.
+- **Report downloads.** Completed analyses (including saved final versions) and sprint code reviews download as UTF-8 Markdown. Reviews include all story verdicts, criteria and code evidence, even when collapsed on screen. Each analysis also shows a six-section faculty Sprint Report below it, with full Markdown and one-page PPTX downloads using the supplied course template. Reports use that analysis's saved data snapshot and require team review. Optional next-sprint goals and faculty feedback can be entered before running an analysis; absent data and validation evidence are explicitly identified. Long PPTX text is condensed with a pointer to the full Markdown.
 
 ## High-level architecture
 

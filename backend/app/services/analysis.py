@@ -9,7 +9,7 @@ from ..database import SessionLocal
 from ..models import Comment, Dependency, Sprint, SprintAnalysis, SprintMessage, SprintReview, Story
 from . import clock
 from .llm import AnalysisLLM, provider_error_message
-from .metrics import closed_sprints, sprint_metrics
+from .metrics import sprint_metrics
 from .sprints import is_closed, is_overdue, sprint_status
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,10 @@ def build_analysis_input(db: Session, sprint: Sprint, additional_context: str) -
             }
         )
 
-    history = closed_sprints(db, sprint.project_id, exclude_id=sprint.id, limit=3)
+    history = db.query(Sprint).filter(
+        Sprint.project_id == sprint.project_id, Sprint.id != sprint.id,
+        Sprint.closed_at.is_not(None), Sprint.start_date < sprint.start_date,
+    ).order_by(Sprint.start_date.desc()).limit(3).all()
     messages = (
         db.query(SprintMessage)
         .options(selectinload(SprintMessage.author))
@@ -90,6 +93,7 @@ def build_analysis_input(db: Session, sprint: Sprint, additional_context: str) -
     )
     closed = is_closed(sprint)
     snapshot = {
+        "project_name": sprint.project.name,
         "sprint": {
             "name": sprint.name,
             "goal": sprint.goal or "No sprint goal recorded",
@@ -112,7 +116,8 @@ def build_analysis_input(db: Session, sprint: Sprint, additional_context: str) -
         "sprint_review": (
             {
                 "run_at": review.created_at.isoformat(),
-                "verdicts": [{"story": item.story_title, "verdict": item.verdict, "summary": item.summary} for item in review.items],
+                "verdicts": [{"story": item.story_title, "verdict": item.verdict, "summary": item.summary,
+                              "evidence": item.evidence, "head_sha": item.head_sha} for item in review.items],
                 "unlinked_work_count": len(review.unlinked_work or []),
             }
             if review
@@ -123,6 +128,13 @@ def build_analysis_input(db: Session, sprint: Sprint, additional_context: str) -
             for message in reversed(messages)
         ],
         "additional_context": additional_context or None,
+        "next_sprints": [
+            {"name": item.name, "goal": item.goal or "No goal recorded"}
+            for item in db.query(Sprint).filter(
+                Sprint.project_id == sprint.project_id, Sprint.start_date > sprint.end_date,
+                Sprint.closed_at.is_(None),
+            ).order_by(Sprint.start_date).limit(1).all()
+        ],
     }
     return snapshot, metrics
 

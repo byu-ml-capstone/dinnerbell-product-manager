@@ -13,3 +13,7 @@ dist/
 
 # Local AI prompt-eval output (scripts/ai_eval.py)
 ai_eval_out/
+.local-artifacts/
+.npm-cache/
+.playwright-cli/
+output/playwright/

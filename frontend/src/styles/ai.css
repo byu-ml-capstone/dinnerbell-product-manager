@@ -138,3 +138,26 @@
   font-size: 14px;
   margin: 10px 0 4px;
 }
+
+.report-detail-stack,
+.faculty-report {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  align-content: start;
+}
+
+.faculty-report h3 { margin: 0 0 4px; }
+.report-notice { background: #fff8e6; border-left: 3px solid #c28b22; padding: 10px 12px; margin: 0; }
+.faculty-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border, #ddd); border-left: 1px solid var(--border, #ddd); }
+.faculty-report-section { padding: 12px; min-width: 0; overflow-wrap: anywhere; border-right: 1px solid var(--border, #ddd); border-bottom: 1px solid var(--border, #ddd); }
+.faculty-report-section > h4 { margin: 0 0 8px; font-size: 14px; }
+.faculty-velocity-scroll { overflow-x: auto; }
+.faculty-report-section .data-table { font-size: 12px; min-width: 400px; }
+.faculty-report-section .data-table th { white-space: nowrap; }
+.report-context { margin: 12px 0; }
+.report-context summary { cursor: pointer; margin-bottom: 10px; }
+
+@media (max-width: 1000px) {
+  .faculty-report-grid { grid-template-columns: 1fr; }
+}

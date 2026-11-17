@@ -62,6 +62,9 @@ jobs:
       - name: Frontend build
         run: cd frontend && npm run build
 
+      - name: Frontend download tests
+        run: cd frontend && npm test
+
   deploy-staging:
     needs: test
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'

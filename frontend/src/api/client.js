@@ -27,7 +27,7 @@ function errorMessage(data, status) {
   return `Request failed (${status})`;
 }
 
-export async function request(path, { method = "GET", body, query } = {}) {
+export async function request(path, { method = "GET", body, query, responseType = "json" } = {}) {
   let url = `${API_BASE}${path}`;
   if (query) {
     const params = new URLSearchParams();
@@ -43,6 +43,7 @@ export async function request(path, { method = "GET", body, query } = {}) {
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (response.ok && responseType === "blob") return response.blob();
   const text = await response.text();
   let data = null;
   try {
@@ -58,6 +59,7 @@ export async function request(path, { method = "GET", body, query } = {}) {
 }
 
 export const get = (path, query) => request(path, { query });
+export const getBlob = (path) => request(path, { responseType: "blob" });
 export const post = (path, body = {}) => request(path, { method: "POST", body });
 export const put = (path, body = {}) => request(path, { method: "PUT", body });
 export const del = (path) => request(path, { method: "DELETE" });

@@ -1194,6 +1194,14 @@ The basic rules every other feature builds on.
     ```
 
     The prompt gives the AI the calculated numbers and tells it to quote them as given, not recalculate them. Reason: these follow D-33's list, and fixed headings make analyses easy to compare.
+
+    **Proposed faculty-report and download extension:** Preserve the eight-section text analysis above a separate six-section faculty Sprint Report. Completed analyses download as UTF-8 Markdown, preferring the saved final when available. Completed sprint reviews also download as Markdown, including all verdicts, criteria, commit-pinned evidence and unlinked work, even when collapsed in the UI (REPO-11 remains advice-only).
+
+    The faculty report uses the selected analysis's saved input snapshot and contains Sprint Goal, Velocity Trend, Sprint Deliveries & Validation, Key Decisions / Blockers, Next Sprint Goals, and Faculty Feedback / Requests. Velocity shows the current sprint and up to two previous closed sprints, with committed points as Planned and completed points as Completed. Percentages use half-up rounding; unknown or zero commitments display N/A, absent prior velocity is explained, and open-sprint figures are provisional. History only includes sprints starting before the selected sprint.
+
+    Optional agreed next goals (including Semester 2 priorities) and faculty feedback/requests are saved in the input snapshot. Otherwise use a recorded upcoming sprint goal, or explicitly identify missing data and label AI suggestions as proposals. Recorded Done status and code-review verdicts are not proof of deployed/user validation. Missing validation and feedback remain explicit. The team must review every report before faculty use (AI-9, D-36).
+
+    Faculty reports download as full Markdown and an editable, condensed one-page PPTX generated from code following the supplied faculty layout. Long text points to the full Markdown. No additional model call, database migration, live-project re-query or instructor presentation file is required for export. This extension is subject to normal team review; it does not change the analysis prompt's eight-section format or the sprint-review verdict logic.
 - [x] **AI-6** Can it recommend actions (reassign, split a story, move to the next sprint)? Can it carry them out after someone confirms?
   - Decision: It can recommend actions in the "Suggested Next Steps" text, but it can never carry them out, even after someone confirms. AI output is advice only (D-36).
 - [x] **AI-7** Which AI provider and model do we use? Who supplies the API key, and what's our budget?
